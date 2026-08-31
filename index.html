@@ -19,6 +19,7 @@
     --text-dim: #9aa8c0;
     --accent: #ffb703;
     --accent-2: #2ec4b6;
+    --btn-teal: #72a4f2;
     --danger: #e63946;
     --run: #4cc9f0;
     --pass: #f4a261;
@@ -357,7 +358,6 @@
   }
   .modal h2.page-title-accent { color: var(--accent); }
   #mainMenuOverlay h2 { text-transform: uppercase; color: var(--accent); }
-  #mainMenuOverlay .menu-btn-accent { background: #72a4f2; color: var(--bg); }
   .modal .points { font-size: 44px; font-weight: 800; color: var(--accent); margin: 10px 0; }
   .modal p.desc { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
   .modal p.pp-earned { color: var(--text); font-size: 14px; font-weight: 700; margin: 16px 0 20px; }
@@ -365,7 +365,7 @@
   .modal p.pp-earned.record-negative { color: var(--danger); }
   #restartBtn { margin-bottom: 8px; }
   .modal button {
-    background: var(--accent-2);
+    background: var(--btn-teal);
     border: none;
     border-radius: 12px;
     padding: 14px 20px;
@@ -451,7 +451,7 @@
   .pick-card-perk { font-size: 12px; font-weight: 700; color: var(--accent-2); margin-top: 6px; }
   .pick-card-archetype { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 4px; }
   .modal .training-buy-btn {
-    background: var(--accent-2);
+    background: var(--btn-teal);
     color: #04262c;
     border: none;
     border-radius: 999px;
@@ -470,7 +470,7 @@
   .modal .select-roster-btn {
     display: block;
     width: 100%;
-    background: var(--accent-2);
+    background: var(--btn-teal);
     border: none;
     border-radius: 10px;
     padding: 10px;
@@ -497,7 +497,7 @@
   }
   .modal .menu-btn:disabled { cursor: not-allowed; }
   .modal .menu-btn:not(:disabled):active { border-color: var(--accent-2); color: var(--accent-2); }
-  .modal .menu-btn.menu-btn-accent { background: var(--accent-2); border: none; color: #04262c; }
+  .modal .menu-btn.menu-btn-accent { background: var(--btn-teal); border: none; color: #04262c; }
   .modal .menu-btn.menu-btn-gold { background: var(--accent); border: none; color: #04262c; }
   .modal .menu-btn.return-btn { display: inline-block; width: auto; border-width: 1px; border-style: solid; border-color: var(--text-dim); }
   .modal .menu-btn.outline-accent { border-style: solid; border-color: var(--accent-2); }
@@ -725,13 +725,13 @@
 <div class="overlay" id="mainMenuOverlay">
   <div class="modal launch-modal">
     <h2>The Playcaller</h2>
-    <p style="margin:0 0 30px; font-size:11px; color:var(--accent);">Beta version · All Rights Reserved</p>
+    <p style="margin:0 0 30px; font-size:11px; color:var(--accent);">V.1 · All Rights Reserved</p>
     <button id="startSeasonMenuBtn">Start a Season</button>
     <button class="menu-btn menu-btn-accent" id="frontOfficeMenuBtn">Front Office</button>
     <button class="menu-btn menu-btn-accent" id="playbookMenuBtn">Playbook</button>
-    <button class="menu-btn menu-btn-accent" id="howToPlayMenuBtn">How to Play</button>
     <button class="menu-btn menu-btn-accent" id="hallOfFameMenuBtn">Hall of Fame</button>
     <button class="menu-btn menu-btn-accent" id="statisticsMenuBtn">Statistics</button>
+    <button class="menu-btn menu-btn-accent" id="howToPlayMenuBtn">How to Play</button>
     <button id="resetProgressBtn" style="display:block; margin:18px auto 0; background:transparent; border:none; color:var(--danger); font-size:11px; font-family:'Press Start 2P', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; cursor:pointer;">Reset</button>
     <div style="margin:10px auto 0;">
       <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
