@@ -729,8 +729,17 @@
     <button class="menu-btn menu-btn-accent" id="playbookMenuBtn">Playbook</button>
     <button class="menu-btn menu-btn-accent" id="howToPlayMenuBtn">How to Play</button>
     <button class="menu-btn menu-btn-accent" id="hallOfFameMenuBtn">Hall of Fame</button>
+    <button class="menu-btn menu-btn-accent" id="statisticsMenuBtn">Statistics</button>
     <button id="resetProgressBtn" style="display:block; margin:18px auto 0; background:transparent; border:none; color:var(--danger); font-size:11px; text-decoration:underline; cursor:pointer;">Reset</button>
     <a href="https://ko-fi.com/theplaycaller" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin:10px auto 0; padding:8px 14px; background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:var(--text-dim); font-size:11px; text-decoration:none;">☕ Support the game</a>
+  </div>
+</div>
+
+<div class="overlay hidden" id="statisticsOverlay">
+  <div class="modal launch-modal">
+    <h2 class="page-title-accent">Statistics</h2>
+    <div class="final-summary" id="statisticsList"></div>
+    <button class="menu-btn return-btn" id="statisticsBackBtn" style="margin-top:14px;">Return</button>
   </div>
 </div>
 
@@ -2374,7 +2383,11 @@
     // total seasons ever completed (Iron Coach tiers), total FRA Bowls won
     // (Back-to-Back / Dynasty), and which Staff/Key Player tiers have ever
     // been recruited (Draft Class).
-    achievements: {}, lifetimeSeasonsPlayed: 0, lifetimeBowlWins: 0, tiersRecruited: {},
+    achievements: {}, lifetimeSeasonsPlayed: 0, lifetimeBowlWins: 0, consecutiveBowlWins: 0, tiersRecruited: {},
+    // Career stat sheet (Statistics page). Updated unconditionally on
+    // every match in showFinalModal, independent of the achievements
+    // above (though a few achievements read the same underlying events).
+    totalMatches: 0, totalPlayoffMatches: 0, totalWins: 0, totalPoints: 0, totalTDs: 0, totalFGs: 0, totalTurnoversForced: 0,
   };
 
   // Persistence -- only `meta` (permanent career progression: XP/RP,
@@ -2978,10 +2991,10 @@
     homecoming: { name: "Homecoming", desc: "Reach the Playoff for the first time.", xp: 2 },
     perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 5, rp: 5 },
     bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 8, rp: 8 },
-    backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 different seasons.", itemId: "fieldgeneral_qb_red" },
+    backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 seasons in a row.", itemId: "fieldgeneral_qb_red" },
     dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 3 times over your career.", xp: 12, rp: 12 },
     groundAndPound: { name: "Ground and Pound", desc: "Win a Playoff match calling only Run plays.", itemId: "cg_ol" },
-    airRaid: { name: "Air Raid", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
+    airRaid: { name: "Air Raid Guru", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
     shutout: { name: "Shutout", desc: "Win a Playoff match without conceding a single point.", itemId: "ss_db" },
     fullArsenal: { name: "Full Arsenal", desc: "Win a match having called every play family (Run, Screen, RPO, Play-Action, Pass).", itemId: "ct_te" },
     brickWall: { name: "Brick Wall", desc: "Hold the opponent under 100 total yards in a match.", itemId: "nt_dl" },
@@ -2994,10 +3007,9 @@
     fullRoster: { name: "Full Roster", desc: "Recruit at least one Assistant, Defensive Coordinator, QB, Lineman, and Skill Player.", rp: 5 },
     maxedOut: { name: "Maxed Out", desc: "Fully upgrade every HC System, Management, and Reputation track.", rp: 10 },
     specialist: { name: "Specialist", desc: "Buy every Training Facilities action of one category in a single season.", xp: 3 },
-    ironCoach5: { name: "Iron Coach (Bronze)", desc: "Complete 5 seasons.", xp: 3, rp: 3 },
-    ironCoach15: { name: "Iron Coach (Silver)", desc: "Complete 15 seasons.", xp: 6, rp: 6 },
-    ironCoach30: { name: "Iron Coach (Gold)", desc: "Complete 30 seasons.", xp: 10, rp: 10 },
-    ironCoach50: { name: "Iron Coach (Legend)", desc: "Complete 50 seasons.", xp: 15, rp: 15 },
+    ironCoach10: { name: "Iron Coach I", desc: "Complete 10 seasons.", xp: 4, rp: 4 },
+    ironCoach25: { name: "Iron Coach II", desc: "Complete 25 seasons.", xp: 8, rp: 8 },
+    ironCoach50: { name: "Iron Coach III", desc: "Complete 50 seasons.", xp: 15, rp: 15 },
   };
   // Every red-tier item gated behind an achievement (see `itemId` above) is
   // removed from grantSeasonRewards()'s random pool -- built once from the
@@ -4299,6 +4311,31 @@
     document.getElementById("mainMenuOverlay").classList.remove("hidden");
   }
 
+  // ---------- Statistics ----------
+  function renderStatistics() {
+    const rows = [
+      ["Total seasons", meta.lifetimeSeasonsPlayed],
+      ["Total matches", `${meta.totalMatches} (${meta.totalPlayoffMatches} playoffs)`],
+      ["Total wins", meta.totalWins],
+      ["Total points", meta.totalPoints],
+      ["Total touchdowns", meta.totalTDs],
+      ["Total field goals", meta.totalFGs],
+      ["Total turnovers forced", meta.totalTurnoversForced],
+    ];
+    document.getElementById("statisticsList").innerHTML = rows.map(([label, value]) =>
+      `<div><span>${label}</span><span>${value}</span></div>`
+    ).join("");
+  }
+  function showStatistics() {
+    document.getElementById("mainMenuOverlay").classList.add("hidden");
+    document.getElementById("statisticsOverlay").classList.remove("hidden");
+    renderStatistics();
+  }
+  function statisticsReturn() {
+    document.getElementById("statisticsOverlay").classList.add("hidden");
+    document.getElementById("mainMenuOverlay").classList.remove("hidden");
+  }
+
   // ---------- How to Play ----------
   function showHowToPlay() {
     document.getElementById("mainMenuOverlay").classList.add("hidden");
@@ -4674,6 +4711,15 @@
     // Snapshot before any phase transition below, so the rest of this
     // function knows which leg was just played.
     const matchPhase = season.phase;
+    // Career stats (Statistics page) -- every match counts here,
+    // regardless of phase or result.
+    meta.totalMatches += 1;
+    if (matchPhase === "playoff" || matchPhase === "bowl") meta.totalPlayoffMatches += 1;
+    if (won) meta.totalWins += 1;
+    meta.totalPoints += state.score;
+    meta.totalTDs += state.driveResults.filter(r => r.reason === "touchdown").length;
+    meta.totalFGs += state.driveResults.filter(r => r.reason === "fieldGoalGood").length;
+    meta.totalTurnoversForced += state.oppTurnoversThisMatch;
     // Hall of Fame -- match-level checks that don't depend on the
     // phase-transition logic below (season/career-level checks are woven
     // into that logic further down, right where each condition becomes
@@ -4739,7 +4785,6 @@
       if (won) {
         unlockAchievement("bowlChampion");
         meta.lifetimeBowlWins += 1;
-        if (meta.lifetimeBowlWins >= 2) unlockAchievement("backToBack");
         if (meta.lifetimeBowlWins >= 3) unlockAchievement("dynasty");
       }
     }
@@ -4753,8 +4798,14 @@
       // (win, loss, or elimination alike), unlike the win-gated checks
       // above.
       meta.lifetimeSeasonsPlayed += 1;
-      [5, 15, 30, 50].forEach(n => { if (meta.lifetimeSeasonsPlayed >= n) unlockAchievement("ironCoach" + n); });
+      [10, 25, 50].forEach(n => { if (meta.lifetimeSeasonsPlayed >= n) unlockAchievement("ironCoach" + n); });
       if (season.turnoversThisSeason === 0) unlockAchievement("ballSecurity");
+      // Back-to-Back needs 2 Bowl wins IN A ROW -- any season that ends
+      // without one (elimination, playoff loss, or bowl loss alike) breaks
+      // the streak. Dynasty (career total, non-consecutive) uses
+      // meta.lifetimeBowlWins instead, incremented above independently.
+      meta.consecutiveBowlWins = (matchPhase === "bowl" && won) ? meta.consecutiveBowlWins + 1 : 0;
+      if (meta.consecutiveBowlWins >= 2) unlockAchievement("backToBack");
       installDiscoveries = grantInstallDiscoveries();
       seasonXpEarned = calculateSeasonXP();
       meta.xp += seasonXpEarned;
@@ -4860,6 +4911,8 @@
   document.getElementById("playbookUnlockBackBtn").addEventListener("click", backToPlaybookFromUnlock);
   document.getElementById("playbookMenuBtn").addEventListener("click", showPlaybook);
   document.getElementById("playbookReturnBtn").addEventListener("click", playbookReturn);
+  document.getElementById("statisticsMenuBtn").addEventListener("click", showStatistics);
+  document.getElementById("statisticsBackBtn").addEventListener("click", statisticsReturn);
   document.getElementById("hallOfFameMenuBtn").addEventListener("click", showHallOfFame);
   document.getElementById("hallOfFameBackBtn").addEventListener("click", hallOfFameReturn);
   document.getElementById("howToPlayMenuBtn").addEventListener("click", showHowToPlay);
