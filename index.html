@@ -346,7 +346,11 @@
     border: 1px solid rgba(255,255,255,0.18);
   }
   .modal h2 { margin: 0 0 8px; font-size: 26px; }
-  #mainMenuOverlay h2 {
+  #mainMenuOverlay h2,
+  #frontOfficeOverlay h2,
+  #playbookOverlay h2,
+  #howToPlayOverlay h2,
+  #hallOfFameOverlay h2 {
     font-family: 'Press Start 2P', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 19px;
     line-height: 1.5;
@@ -724,9 +728,17 @@
     <button class="menu-btn menu-btn-accent" id="frontOfficeMenuBtn">Front Office</button>
     <button class="menu-btn menu-btn-accent" id="playbookMenuBtn">Playbook</button>
     <button class="menu-btn menu-btn-accent" id="howToPlayMenuBtn">How to Play</button>
-    <button class="menu-btn outline-accent" disabled>Hall of Fame<span class="menu-btn-sub">Not implemented yet</span></button>
+    <button class="menu-btn menu-btn-accent" id="hallOfFameMenuBtn">Hall of Fame</button>
     <button id="resetProgressBtn" style="display:block; margin:18px auto 0; background:transparent; border:none; color:var(--danger); font-size:11px; text-decoration:underline; cursor:pointer;">Reset</button>
     <a href="https://ko-fi.com/theplaycaller" target="_blank" rel="noopener noreferrer" style="display:block; margin:10px auto 0; color:var(--text-dim); font-size:11px; text-decoration:none; opacity:0.7;">☕ Support the game</a>
+  </div>
+</div>
+
+<div class="overlay hidden" id="hallOfFameOverlay">
+  <div class="modal launch-modal">
+    <h2 class="page-title-accent">Hall of Fame</h2>
+    <p class="setup-intro" style="margin:0 0 14px;">Coming soon.</p>
+    <button class="menu-btn return-btn" id="hallOfFameBackBtn" style="margin-top:14px;">Return</button>
   </div>
 </div>
 
@@ -4116,6 +4128,16 @@
     renderPlaybookUnlockPage();
   }
 
+  // ---------- Hall of Fame ----------
+  function showHallOfFame() {
+    document.getElementById("mainMenuOverlay").classList.add("hidden");
+    document.getElementById("hallOfFameOverlay").classList.remove("hidden");
+  }
+  function hallOfFameReturn() {
+    document.getElementById("hallOfFameOverlay").classList.add("hidden");
+    document.getElementById("mainMenuOverlay").classList.remove("hidden");
+  }
+
   // ---------- How to Play ----------
   function showHowToPlay() {
     document.getElementById("mainMenuOverlay").classList.add("hidden");
@@ -4638,6 +4660,8 @@
   document.getElementById("playbookUnlockBackBtn").addEventListener("click", backToPlaybookFromUnlock);
   document.getElementById("playbookMenuBtn").addEventListener("click", showPlaybook);
   document.getElementById("playbookReturnBtn").addEventListener("click", playbookReturn);
+  document.getElementById("hallOfFameMenuBtn").addEventListener("click", showHallOfFame);
+  document.getElementById("hallOfFameBackBtn").addEventListener("click", hallOfFameReturn);
   document.getElementById("howToPlayMenuBtn").addEventListener("click", showHowToPlay);
   document.getElementById("howToPlayBackBtn").addEventListener("click", howToPlayReturn);
   document.getElementById("playbookFamilyConfirmBtn").addEventListener("click", confirmPlaybookFamily);
