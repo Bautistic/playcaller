@@ -346,12 +346,8 @@
     text-align: center;
     border: 1px solid rgba(255,255,255,0.18);
   }
-  .modal h2 { margin: 0 0 8px; font-size: 26px; }
-  #mainMenuOverlay h2,
-  #frontOfficeOverlay h2,
-  #playbookOverlay h2,
-  #howToPlayOverlay h2,
-  #hallOfFameOverlay h2 {
+  .modal h2 {
+    margin: 0 0 8px;
     font-family: 'Press Start 2P', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 19px;
     line-height: 1.5;
@@ -2447,7 +2443,7 @@
   function resetProgress() {
     modalContent.innerHTML = `
       <h2>Reset progress?</h2>
-      <p class="desc">This permanently erases all XP, RP, and unlocks.</p>
+      <p class="desc">This permanently erases all XP, RP, unlocks, Hall of Fame achievements, and career statistics.</p>
       <button class="menu-btn" id="resetCancelBtn" style="margin-top:6px;">Cancel</button>
       <button id="resetConfirmBtn" style="margin-top:8px; background:rgba(230,57,70,0.12); border:1.5px solid var(--danger); color:var(--danger);">Reset</button>
     `;
