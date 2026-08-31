@@ -3058,14 +3058,18 @@
       || LINEMEN.find(x => x.id === id) || SKILL_PLAYERS.find(x => x.id === id) || null;
   }
 
-  // Season-end reward pool (2026-08-26, expanded 2026-08-28 once the full
-  // Linemen/Skills roster existed) -- direct grant, no player choice
-  // (Training Facilities already offers choices mid-season, so this
-  // shouldn't add another one). Draws from 5 categories -- DCs (beaten
-  // only), Assistants, QBs, Linemen, Skills -- combined into one weighted
-  // pool. Playbook cards are handled separately by the Install discovery
-  // lottery above, not by this system.
-  const SEASON_REWARD_COUNT = 3;
+  // Season-end reward pool (2026-08-26, expanded 2026-08-28, reworked
+  // 2026-08-31 to scale with how far the season went). How many slots you
+  // get depends on the furthest phase actually reached this season:
+  // regular-season elimination (never reached the Playoff) = 1, green-tier
+  // only -- 3 felt too generous for a season that didn't even make the
+  // Playoff. Reaching the Playoff (won or lost) = 2, any tier. Reaching
+  // the Bowl (won or lost) = 3, any tier, unchanged from before.
+  function seasonRewardCount(matchPhase) {
+    if (matchPhase === "regular") return 1;
+    if (matchPhase === "playoff") return 2;
+    return 3; // bowl
+  }
   // Weight = cheap-item bias (1/cost) + a performance term that grows
   // with cost, so a better season shifts the odds toward pricier/rarer
   // items instead of just handing out more of the cheap ones. k is a
@@ -3097,22 +3101,28 @@
   // Staff/Key Player recruit flow. Every pick carries a `role` label
   // (Front Office category / real position) so the end-of-season announcement
   // can show more than just a name -- see `unlocksText` in showFinalModal.
-  function grantSeasonRewards() {
+  function grantSeasonRewards(matchPhase) {
+    // Beating a named DC (Playoff/Bowl only, see ARCHETYPE_DC_ID) now
+    // guarantees their discovery instead of just entering them in the
+    // weighted lottery below -- beating a specific opponent is a bigger
+    // deal than an anonymous Assistant/Player draw, so it shouldn't be
+    // left to RNG. This automatic pick still consumes one of the season's
+    // slots (the remaining slots, if any, are filled by the weighted draw
+    // from every other category). A regular-season-elimination season can
+    // never have a beaten DC (the Playoff was never reached), so this
+    // never applies to the 1-green-slot tier in practice.
+    const autoDcPicks = DCS
+      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id])
+      .map(d => ({ kind: "coach", id: d.id, name: d.name, role: "Defensive Coordinator", tier: d.tier }));
+    const slotsLeft = Math.max(0, seasonRewardCount(matchPhase) - autoDcPicks.length);
     // ATH is known from game start (discoveredFromStart) -- not a reward
     // target, nothing left to discover about him.
     const staffEntries = ASSISTANTS
       .filter(a => !a.discoveredFromStart && !meta.discoveredStaff[a.id] && !meta.unlockedStaff[a.id])
-      .map(a => ({ kind: "coach", id: a.id, name: a.name, role: a.category, weight: seasonRewardWeight(a.cost) }));
-    // DCs with a `cost` (everyone but Didier) are only eligible if the
-    // player actually beat them as a named Playoff/Bowl opponent this
-    // season (season.beatenDcIds, set in showFinalModal) -- unlike
-    // Assistants/Players, they're never just a generic undiscovered draw.
-    const dcEntries = DCS
-      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id])
-      .map(d => ({ kind: "coach", id: d.id, name: d.name, role: "Defensive Coordinator", weight: seasonRewardWeight(d.cost) }));
+      .map(a => ({ kind: "coach", id: a.id, name: a.name, role: a.category, tier: a.tier, weight: seasonRewardWeight(a.cost) }));
     const playerEntries = QBS
       .filter(q => q.cost && !q.discoveredFromStart && !meta.discoveredStaff[q.id] && !meta.unlockedStaff[q.id])
-      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", weight: seasonRewardWeight(q.cost) }));
+      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", tier: q.tier, weight: seasonRewardWeight(q.cost) }));
     // Linemen/Skills were missing from this pool entirely until now -- they
     // existed in the game (recruitable via RP, same as Assistants/QBs) but
     // had no discovery path at all, since meta.discoveredStaff is only ever
@@ -3120,13 +3130,15 @@
     // as Assistants/QBs (no "must beat them" gate like DCs).
     const linemenEntries = LINEMEN
       .filter(l => !l.discoveredFromStart && !meta.discoveredStaff[l.id] && !meta.unlockedStaff[l.id])
-      .map(l => ({ kind: "player", id: l.id, name: l.name, role: l.position, weight: seasonRewardWeight(l.cost) }));
+      .map(l => ({ kind: "player", id: l.id, name: l.name, role: l.position, tier: l.tier, weight: seasonRewardWeight(l.cost) }));
     const skillEntries = SKILL_PLAYERS
       .filter(s => !s.discoveredFromStart && !meta.discoveredStaff[s.id] && !meta.unlockedStaff[s.id])
-      .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, weight: seasonRewardWeight(s.cost) }));
-    const pool = [...staffEntries, ...dcEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
+      .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, tier: s.tier, weight: seasonRewardWeight(s.cost) }));
+    let pool = [...staffEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
       .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id));
-    const picks = weightedSampleWithoutReplacement(pool, SEASON_REWARD_COUNT);
+    if (matchPhase === "regular") pool = pool.filter(e => e.tier === "green");
+    const weightedPicks = weightedSampleWithoutReplacement(pool, slotsLeft);
+    const picks = [...autoDcPicks, ...weightedPicks];
     // Discovered only, still needs RP to recruit -- never a free grant.
     picks.forEach(p => { meta.discoveredStaff[p.id] = true; });
     return picks;
@@ -4854,7 +4866,7 @@
       meta.xp += seasonXpEarned;
       seasonRpEarned = calculateSeasonRP();
       meta.rp += seasonRpEarned;
-      seasonUnlocks = grantSeasonRewards();
+      seasonUnlocks = grantSeasonRewards(matchPhase);
       season.phase = "done";
       saveGame();
     } else if (advanceTo) {
