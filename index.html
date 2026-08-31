@@ -2995,9 +2995,9 @@
     dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 3 times over your career.", xp: 12, rp: 12 },
     groundAndPound: { name: "Ground and Pound", desc: "Win a Playoff match calling only Run plays.", itemId: "cg_ol" },
     airRaid: { name: "Air Raid Guru", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
-    shutout: { name: "Shutout", desc: "Win a Playoff match without conceding a single point.", itemId: "ss_db" },
-    fullArsenal: { name: "Full Arsenal", desc: "Win a match having called every play family (Run, Screen, RPO, Play-Action, Pass).", itemId: "ct_te" },
-    brickWall: { name: "Brick Wall", desc: "Hold the opponent under 100 total yards in a match.", itemId: "nt_dl" },
+    shutout: { name: "Shutout", desc: "Win the FRA Bowl without conceding a single point.", itemId: "ss_db" },
+    fullArsenal: { name: "Full Arsenal", desc: "Win a Playoff match having called every play family (Run, Screen, RPO, Play-Action, Pass).", itemId: "ct_te" },
+    brickWall: { name: "Brick Wall", desc: "Win a Playoff match holding the opponent under 60 total yards.", itemId: "nt_dl" },
     takeaway: { name: "Takeaway", desc: "Force 3 opponent turnovers in a match.", itemId: "cb_db_red" },
     workhorse: { name: "Workhorse", desc: "Rush for 300 yards in a single season.", itemId: "eb_rb" },
     clutch: { name: "Clutch", desc: "Win a match by scoring on the final drive after trailing entering it.", xp: 5, rp: 3 },
@@ -3010,6 +3010,16 @@
     ironCoach10: { name: "Iron Coach I", desc: "Complete 10 seasons.", xp: 4, rp: 4 },
     ironCoach25: { name: "Iron Coach II", desc: "Complete 25 seasons.", xp: 8, rp: 8 },
     ironCoach50: { name: "Iron Coach III", desc: "Complete 50 seasons.", xp: 15, rp: 15 },
+    // Career stat milestones (Statistics page), added 2026-08-31.
+    pointMachine100: { name: "Point Machine I", desc: "Score 100 points over your career.", xp: 3, rp: 3 },
+    pointMachine250: { name: "Point Machine II", desc: "Score 250 points over your career.", xp: 6, rp: 6 },
+    pointMachine500: { name: "Point Machine III", desc: "Score 500 points over your career.", xp: 10, rp: 10 },
+    touchdownKing: { name: "Touchdown King", desc: "Score 50 touchdowns over your career.", xp: 8, rp: 8 },
+    automatic: { name: "Automatic", desc: "Make 50 field goals over your career.", xp: 6, rp: 6 },
+    ballhawk: { name: "Ballhawk", desc: "Force 20 turnovers over your career.", xp: 6, rp: 6 },
+    marathonMan: { name: "Marathon Man", desc: "Play 100 matches over your career.", xp: 10, rp: 10 },
+    postseasonRegular: { name: "Postseason Regular", desc: "Play 20 Playoff/Bowl matches over your career.", xp: 8, rp: 8 },
+    winColumn: { name: "Win Column", desc: "Win 50 matches over your career.", xp: 8, rp: 8 },
   };
   // Every red-tier item gated behind an achievement (see `itemId` above) is
   // removed from grantSeasonRewards()'s random pool -- built once from the
@@ -4712,30 +4722,46 @@
     // function knows which leg was just played.
     const matchPhase = season.phase;
     // Career stats (Statistics page) -- every match counts here,
-    // regardless of phase or result.
+    // regardless of phase or result. Each counter's matching career-
+    // milestone achievement (if any) is checked right where it's updated.
     meta.totalMatches += 1;
-    if (matchPhase === "playoff" || matchPhase === "bowl") meta.totalPlayoffMatches += 1;
-    if (won) meta.totalWins += 1;
+    if (meta.totalMatches >= 100) unlockAchievement("marathonMan");
+    if (matchPhase === "playoff" || matchPhase === "bowl") {
+      meta.totalPlayoffMatches += 1;
+      if (meta.totalPlayoffMatches >= 20) unlockAchievement("postseasonRegular");
+    }
+    if (won) {
+      meta.totalWins += 1;
+      if (meta.totalWins >= 50) unlockAchievement("winColumn");
+    }
     meta.totalPoints += state.score;
+    [100, 250, 500].forEach(n => { if (meta.totalPoints >= n) unlockAchievement("pointMachine" + n); });
     meta.totalTDs += state.driveResults.filter(r => r.reason === "touchdown").length;
+    if (meta.totalTDs >= 50) unlockAchievement("touchdownKing");
     meta.totalFGs += state.driveResults.filter(r => r.reason === "fieldGoalGood").length;
+    if (meta.totalFGs >= 50) unlockAchievement("automatic");
     meta.totalTurnoversForced += state.oppTurnoversThisMatch;
+    if (meta.totalTurnoversForced >= 20) unlockAchievement("ballhawk");
     // Hall of Fame -- match-level checks that don't depend on the
     // phase-transition logic below (season/career-level checks are woven
     // into that logic further down, right where each condition becomes
-    // knowable).
+    // knowable). Brick Wall/Full Arsenal/Shutout were tightened
+    // (win + Playoff-or-Bowl gated, Brick Wall's threshold lowered
+    // 100->60) since they unlock a red-tier item and were too easy to
+    // stumble into by luck on any match at base difficulty.
     season.rushYardsSeason += state.rushYardsThisMatch;
     if (season.rushYardsSeason >= 300) unlockAchievement("workhorse");
-    if (state.oppTotalYards < 100) unlockAchievement("brickWall");
     if (state.oppTurnoversThisMatch >= 3) unlockAchievement("takeaway");
     if (won) {
       unlockAchievement("firstWin");
       const families = state.playFamiliesUsedThisMatch;
       const isPlayoffMatch = matchPhase === "playoff";
+      const isBowlMatch = matchPhase === "bowl";
       if (isPlayoffMatch && families.size === 1 && families.has("run")) unlockAchievement("groundAndPound");
       if (isPlayoffMatch && families.size > 0 && !families.has("run")) unlockAchievement("airRaid");
-      if (isPlayoffMatch && state.oppScore === 0) unlockAchievement("shutout");
-      if (Object.keys(FAMILY_LABELS).every(f => families.has(f))) unlockAchievement("fullArsenal");
+      if (isPlayoffMatch && state.oppTotalYards < 60) unlockAchievement("brickWall");
+      if (isPlayoffMatch && Object.keys(FAMILY_LABELS).every(f => families.has(f))) unlockAchievement("fullArsenal");
+      if (isBowlMatch && state.oppScore === 0) unlockAchievement("shutout");
       if (state.trickPlaySuccessThisMatch) unlockAchievement("trickOrTreat");
       if (state.enteredFinalDriveTrailing) unlockAchievement("clutch");
     }
