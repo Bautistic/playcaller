@@ -507,10 +507,10 @@
   .modal .menu-btn.menu-btn-gold { background: var(--accent); border: none; color: #04262c; }
   .modal .menu-btn.return-btn { display: inline-block; width: auto; border-width: 1px; border-style: solid; border-color: var(--text-dim); }
   .modal .menu-btn.outline-accent { border-style: solid; border-color: var(--accent-2); }
-  #setActiveSystemBtn { border-style: solid; }
-  #systemListButtons > div[data-id],
-  #managementListButtons > div[data-id],
-  #reputationListButtons > div[data-id] { border-style: solid; }
+  #setActiveSystemBtn:not(.upgrade-active) { border-style: solid; border-color: var(--btn-teal); }
+  #systemListButtons > div[data-id]:not(.upgrade-active),
+  #managementListButtons > div[data-id]:not(.upgrade-active),
+  #reputationListButtons > div[data-id]:not(.upgrade-active) { border-style: solid; border-color: var(--btn-teal); }
   .upgrade-detail-perks { margin-bottom: 10px; }
   .upgrade-option-body { margin-top: 10px; text-align: left; }
   .menu-btn.upgrade-active { border-color: var(--accent-2); color: var(--accent-2); }
