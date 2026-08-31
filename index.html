@@ -2831,11 +2831,13 @@
   function openRosterSelect(mode) {
     rosterSelectMode = mode;
     renderRosterOverlay();
+    document.getElementById("launchOverlay").classList.add("hidden");
     document.getElementById("rosterOverlay").classList.remove("hidden");
   }
 
   function confirmRosterSelection() {
     document.getElementById("rosterOverlay").classList.add("hidden");
+    document.getElementById("launchOverlay").classList.remove("hidden");
     saveGame();
     renderTeamSetupCards();
   }
