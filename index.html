@@ -3207,7 +3207,14 @@
     // Draw the exact count needed from each tier bucket -- never offer 2
     // tiers of the same family (e.g. Red Zone Drill) together, tracked
     // across buckets since TF4 can draw blue and purple in the same visit.
+    // categoryCounts is tracked the same way, capping any one category
+    // (Scouting/Installs/Drills/Community) at 2 of the 3 offers so a visit
+    // never reads as "3 Installs" -- Installs dominates the blue and purple
+    // pools, so this matters most for TF3/TF4. The uncapped fallback pass
+    // only fires if a tier's remaining pool can't fill its quota otherwise
+    // (e.g. late-season, most other categories already bought out).
     const seenGroups = new Set();
+    const categoryCounts = {};
     const offers = [];
     Object.keys(composition).forEach(tier => {
       const pool = shuffle(TRAINING_ACTIONS.filter(a =>
@@ -3216,7 +3223,21 @@
         (!a.postseasonOnly || season.phase !== "regular") &&
         (!a.group || !seenGroups.has(a.group))
       ));
-      pool.slice(0, composition[tier]).forEach(a => {
+      const needed = composition[tier];
+      const picked = [];
+      pool.forEach(a => {
+        if (picked.length < needed && (categoryCounts[a.category] || 0) < 2) {
+          picked.push(a);
+          categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+        }
+      });
+      pool.forEach(a => {
+        if (picked.length < needed && !picked.includes(a)) {
+          picked.push(a);
+          categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+        }
+      });
+      picked.forEach(a => {
         if (a.group) seenGroups.add(a.group);
         offers.push(a);
       });
