@@ -742,6 +742,11 @@
     <button class="menu-btn menu-btn-accent" id="statisticsMenuBtn">Statistics</button>
     <button class="menu-btn menu-btn-accent" id="howToPlayMenuBtn">How to Play</button>
     <button id="resetProgressBtn" style="display:block; margin:18px auto 0; background:transparent; border:none; color:var(--danger); font-size:11px; font-family:'Press Start 2P', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; cursor:pointer;">Reset</button>
+    <div style="display:flex; justify-content:center; gap:16px; margin-top:10px;">
+      <button id="exportSaveBtn" style="background:transparent; border:none; color:var(--text-dim); font-size:11px; text-decoration:underline; cursor:pointer;">Export Save</button>
+      <button id="importSaveBtn" style="background:transparent; border:none; color:var(--text-dim); font-size:11px; text-decoration:underline; cursor:pointer;">Import Save</button>
+    </div>
+    <input type="file" id="importSaveInput" accept="application/json" style="display:none;">
     <div style="margin:10px auto 0;">
       <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
       <script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'L3T4263PY4');kofiwidget2.draw();</script>
@@ -2453,6 +2458,18 @@
   // Reuses the generic #overlay/#modalContent used for in-match modals;
   // safe to layer on top of #mainMenuOverlay since both are separate
   // .overlay elements and this one is later in DOM order.
+  // Shared by Reset and Import Save -- both end with a fresh reload of a
+  // just-overwritten (or cleared) localStorage save. Hides every overlay
+  // (including the confirmation dialog itself) and shows the main menu
+  // first, so the very last frame the player sees, right up until the
+  // fresh page paints, is the main menu underneath -- not a lingering
+  // dialog.
+  function reloadToMainMenu() {
+    hideModal();
+    document.querySelectorAll(".overlay").forEach(el => { if (el.id !== "mainMenuOverlay") el.classList.add("hidden"); });
+    document.getElementById("mainMenuOverlay").classList.remove("hidden");
+    location.reload();
+  }
   function resetProgress() {
     modalContent.innerHTML = `
       <h2>Reset progress?</h2>
@@ -2465,15 +2482,68 @@
     document.getElementById("resetConfirmBtn").addEventListener("click", () => {
       saveDisabled = true;
       localStorage.removeItem(SAVE_KEY);
-      // Hide the confirmation dialog (and every other overlay) before the
-      // reload so the very last frame the player sees, right up until the
-      // fresh page paints, is the main menu underneath -- not a lingering
-      // "Reset progress?" dialog.
-      hideModal();
-      document.querySelectorAll(".overlay").forEach(el => { if (el.id !== "mainMenuOverlay") el.classList.add("hidden"); });
-      document.getElementById("mainMenuOverlay").classList.remove("hidden");
-      location.reload();
+      reloadToMainMenu();
     });
+  }
+  // Export/Import Save -- lets a player carry their progress across
+  // browsers/devices (or just back it up) despite the save living only in
+  // this origin's localStorage. Exports the exact same {version, meta,
+  // roster} shape saveGame() writes, so an imported file round-trips
+  // through loadGame() with no special-casing.
+  function exportSave() {
+    const data = JSON.stringify({ version: SAVE_VERSION, meta, roster }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `playcaller-save-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function showImportError(msg) {
+    modalContent.innerHTML = `
+      <h2>Import failed</h2>
+      <p class="desc">${msg}</p>
+      <button class="menu-btn" id="importErrorOkBtn" style="margin-top:6px;">OK</button>
+    `;
+    overlay.classList.remove("hidden");
+    document.getElementById("importErrorOkBtn").addEventListener("click", hideModal);
+  }
+  function confirmImport(parsed) {
+    modalContent.innerHTML = `
+      <h2>Import save?</h2>
+      <p class="desc">This will overwrite your current progress with the imported save.</p>
+      <button class="menu-btn" id="importCancelBtn" style="margin-top:6px;">Cancel</button>
+      <button id="importConfirmBtn" style="margin-top:8px; background:rgba(230,57,70,0.12); border:1.5px solid var(--danger); color:var(--danger);">Import</button>
+    `;
+    overlay.classList.remove("hidden");
+    document.getElementById("importCancelBtn").addEventListener("click", hideModal);
+    document.getElementById("importConfirmBtn").addEventListener("click", () => {
+      saveDisabled = true;
+      localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
+      reloadToMainMenu();
+    });
+  }
+  function importSaveFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (e) {
+        showImportError("This file isn't valid JSON.");
+        return;
+      }
+      if (!parsed || parsed.version !== SAVE_VERSION || !parsed.meta || !parsed.roster) {
+        showImportError("This doesn't look like a Playcaller save file.");
+        return;
+      }
+      confirmImport(parsed);
+    };
+    reader.onerror = () => showImportError("Couldn't read that file.");
+    reader.readAsText(file);
   }
 
   function coachEffectAmount(stat) {
@@ -4982,6 +5052,13 @@
   document.getElementById("howToPlayBackBtn").addEventListener("click", howToPlayReturn);
   document.getElementById("playbookFamilyConfirmBtn").addEventListener("click", confirmPlaybookFamily);
   document.getElementById("resetProgressBtn").addEventListener("click", resetProgress);
+  document.getElementById("exportSaveBtn").addEventListener("click", exportSave);
+  document.getElementById("importSaveBtn").addEventListener("click", () => document.getElementById("importSaveInput").click());
+  document.getElementById("importSaveInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) importSaveFile(file);
+    e.target.value = ""; // allow re-selecting the same file next time
+  });
   renderTeamSetupCards();
 
 })();
