@@ -737,7 +737,8 @@
 <div class="overlay hidden" id="hallOfFameOverlay">
   <div class="modal launch-modal">
     <h2 class="page-title-accent">Hall of Fame</h2>
-    <p class="setup-intro" style="margin:0 0 14px;">Coming soon.</p>
+    <p class="setup-intro" id="hallOfFameProgress" style="margin:0 0 14px;"></p>
+    <div id="hallOfFameList"></div>
     <button class="menu-btn return-btn" id="hallOfFameBackBtn" style="margin-top:14px;">Return</button>
   </div>
 </div>
@@ -1654,6 +1655,14 @@
       // played this match -- promoted to season.provenInstalls only if
       // this match is won, see showFinalModal().
       installCardsPlayedThisMatch: new Set(),
+      // Match-level achievement tracking (Hall of Fame) -- all reset fresh
+      // every match, folded into season/career counters (or checked
+      // directly) in showFinalModal().
+      rushYardsThisMatch: 0,
+      oppTurnoversThisMatch: 0,
+      playFamiliesUsedThisMatch: new Set(),
+      trickPlaySuccessThisMatch: false,
+      enteredFinalDriveTrailing: false,
     };
     drawFreshHand();
     refreshDefensiveWeights();
@@ -1884,8 +1893,19 @@
   function applyPlayResult(card, result) {
     let msg = outcomeMessage(card, result);
     state.totalYards += result.yards;
+    // Hall of Fame tracking -- a play counts as "called" for Full
+    // Arsenal/Ground and Pound/Air Raid regardless of outcome (even a
+    // fumbled run was still a run call), but rushing yards and a
+    // trick-play "success" only count on an actual gain (not a turnover,
+    // sack, or incompletion).
+    if (card.family) state.playFamiliesUsedThisMatch.add(card.family);
+    if (result.outcome === "gain") {
+      if (card.type === "run") state.rushYardsThisMatch += result.yards;
+      if (card.tags && card.tags.includes("Trick Play")) state.trickPlaySuccessThisMatch = true;
+    }
 
     if (result.outcome === "fumble" || result.outcome === "interception") {
+      season.turnoversThisSeason += 1;
       state.log = msg;
       render();
       endDrive(result.outcome === "fumble" ? "fumble" : "interception", 0);
@@ -2088,6 +2108,7 @@
     state.oppTotalYards += oppResult.yards;
     if (oppResult.reason === "fumble" || oppResult.reason === "interception") {
       state.score += 2; // our defense cashes in their turnover
+      state.oppTurnoversThisMatch += 1;
     }
     state.oppDriveResults.push({ reason: oppResult.reason, points: oppResult.points, yards: oppResult.yards });
     showOpponentDriveModal(oppResult);
@@ -2097,6 +2118,10 @@
   function advanceAfterOpponentDrive() {
     hideModal();
     state.driveIndex += 1;
+    // Snapshot for the Clutch achievement -- the only point where both
+    // sides have completed the same number of drives (2 of 3) right before
+    // the deciding final drive starts.
+    if (state.driveIndex === 2) state.enteredFinalDriveTrailing = state.score < state.oppScore;
     if (state.driveIndex >= state.totalDrives) {
       state.gameOver = true;
       showFinalModal();
@@ -2340,7 +2365,17 @@
   // and HC-upgrade spending don't compete for the same currency, earned
   // via calculateSeasonRP(). Both persist indefinitely, like `roster` --
   // NOT reset by resetSeason().
-  let meta = { xp: 0, rp: 0, unlockedStaff: {}, unlockedCards: {}, systemLevels: {}, discoveredStaff: {}, discoveredCards: {}, managementLevels: {}, reputationLevels: {} };
+  let meta = {
+    xp: 0, rp: 0, unlockedStaff: {}, unlockedCards: {}, systemLevels: {}, discoveredStaff: {}, discoveredCards: {}, managementLevels: {}, reputationLevels: {},
+    // Hall of Fame / achievements (2026-08-31). `achievements` is a flat
+    // id -> true map (see ACHIEVEMENTS below for the reward each one
+    // carries). The rest are lifetime/career counters an achievement check
+    // needs but that don't belong on `season` (which resets every run):
+    // total seasons ever completed (Iron Coach tiers), total FRA Bowls won
+    // (Back-to-Back / Dynasty), and which Staff/Key Player tiers have ever
+    // been recruited (Draft Class).
+    achievements: {}, lifetimeSeasonsPlayed: 0, lifetimeBowlWins: 0, tiersRecruited: {},
+  };
 
   // Persistence -- only `meta` (permanent career progression: XP/RP,
   // every unlock/discovery, HC upgrade levels) and `roster` (current
@@ -2884,10 +2919,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0 };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0 };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
@@ -2925,6 +2960,68 @@
       ? (season.playoffWin === true ? 2 : season.playoffWin === false ? -2 : 0)
       : 0;
     return Math.max(0, regularRP + playoffRP + bowlRP + mediaIRP + mediaIIRP);
+  }
+
+  // ---------- Hall of Fame (Achievements) ----------
+  // Design finalized 2026-08-31. Two kinds of achievement: a plain
+  // XP/RP trophy, or an `itemId` unlock -- the latter *discovers* one
+  // specific red-tier (top-tier) Staff/Key Player that has been pulled OUT
+  // of the normal end-of-season RNG pool (see EXCLUDED_FROM_SEASON_REWARDS
+  // / grantSeasonRewards below) so the game's very best recruits are
+  // deliberate goals to chase instead of a lottery. "Discover" matches
+  // every other unlock path in the game: it only reveals the recruit
+  // target, RP is still spent in the Front Office to actually acquire
+  // them. All XP/RP thresholds and reward amounts are first-guess tuning,
+  // not locked values, same posture as the season XP/RP formulas above.
+  const ACHIEVEMENTS = {
+    firstWin: { name: "First Win", desc: "Win your first match.", xp: 2 },
+    homecoming: { name: "Homecoming", desc: "Reach the Playoff for the first time.", xp: 2 },
+    perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 5, rp: 5 },
+    playoffChampion: { name: "Playoff Champion", desc: "Win the Playoff.", xp: 5, rp: 5 },
+    bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 8, rp: 8 },
+    backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 different seasons.", itemId: "fieldgeneral_qb_red" },
+    dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 3 times over your career.", xp: 12, rp: 12 },
+    groundAndPound: { name: "Ground and Pound", desc: "Win a Playoff match calling only Run plays.", itemId: "cg_ol" },
+    airRaid: { name: "Air Raid", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
+    shutout: { name: "Shutout", desc: "Win a Playoff match without conceding a single point.", itemId: "ss_db" },
+    fullArsenal: { name: "Full Arsenal", desc: "Win a match having called every play family (Run, Screen, RPO, Play-Action, Pass).", itemId: "ct_te" },
+    brickWall: { name: "Brick Wall", desc: "Hold the opponent under 100 total yards in a match.", itemId: "nt_dl" },
+    takeaway: { name: "Takeaway", desc: "Force 3 opponent turnovers in a match.", itemId: "cb_db_red" },
+    workhorse: { name: "Workhorse", desc: "Rush for 300 yards in a single season.", itemId: "eb_rb" },
+    clutch: { name: "Clutch", desc: "Win a match by scoring on the final drive after trailing entering it.", xp: 5, rp: 3 },
+    trickOrTreat: { name: "Trick or Treat", desc: "Land a trick play in a match you win.", xp: 2 },
+    ballSecurity: { name: "Ball Security", desc: "Finish a season without throwing an interception or losing a fumble.", xp: 5, rp: 5 },
+    draftClass: { name: "Draft Class", desc: "Recruit at least one Staff/Key Player of every tier (green, blue, purple, red) over your career.", xp: 4, rp: 4 },
+    fullRoster: { name: "Full Roster", desc: "Recruit at least one Assistant, Defensive Coordinator, QB, Lineman, and Skill Player.", rp: 5 },
+    maxedOut: { name: "Maxed Out", desc: "Fully upgrade every HC System, Management, and Reputation track.", rp: 10 },
+    specialist: { name: "Specialist", desc: "Buy every Training Facilities action of one category in a single season.", xp: 3 },
+    ironCoach5: { name: "Iron Coach (Bronze)", desc: "Complete 5 seasons.", xp: 3, rp: 3 },
+    ironCoach15: { name: "Iron Coach (Silver)", desc: "Complete 15 seasons.", xp: 6, rp: 6 },
+    ironCoach30: { name: "Iron Coach (Gold)", desc: "Complete 30 seasons.", xp: 10, rp: 10 },
+    ironCoach50: { name: "Iron Coach (Legend)", desc: "Complete 50 seasons.", xp: 15, rp: 15 },
+  };
+  // Every red-tier item gated behind an achievement (see `itemId` above) is
+  // removed from grantSeasonRewards()'s random pool -- built once from the
+  // registry so the two stay in sync automatically if the list changes.
+  const EXCLUDED_FROM_SEASON_REWARDS = new Set(
+    Object.values(ACHIEVEMENTS).map(a => a.itemId).filter(Boolean)
+  );
+  // Idempotent -- returns false (no-op) if already unlocked, so every call
+  // site can fire its check unconditionally without guarding itself.
+  function unlockAchievement(id) {
+    if (meta.achievements[id]) return false;
+    meta.achievements[id] = true;
+    const a = ACHIEVEMENTS[id];
+    if (a.xp) meta.xp += a.xp;
+    if (a.rp) meta.rp += a.rp;
+    if (a.itemId) meta.discoveredStaff[a.itemId] = true;
+    return true;
+  }
+  // Looks a recruit id up across all 5 Staff/Key Player pools -- used by
+  // the Hall of Fame page to show what an item-linked achievement unlocks.
+  function findRecruitById(id) {
+    return ASSISTANTS.find(x => x.id === id) || DCS.find(x => x.id === id) || QBS.find(x => x.id === id)
+      || LINEMEN.find(x => x.id === id) || SKILL_PLAYERS.find(x => x.id === id) || null;
   }
 
   // Season-end reward pool (2026-08-26, expanded 2026-08-28 once the full
@@ -2993,7 +3090,8 @@
     const skillEntries = SKILL_PLAYERS
       .filter(s => !s.discoveredFromStart && !meta.discoveredStaff[s.id] && !meta.unlockedStaff[s.id])
       .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, weight: seasonRewardWeight(s.cost) }));
-    const pool = [...staffEntries, ...dcEntries, ...playerEntries, ...linemenEntries, ...skillEntries];
+    const pool = [...staffEntries, ...dcEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
+      .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id));
     const picks = weightedSampleWithoutReplacement(pool, SEASON_REWARD_COUNT);
     // Discovered only, still needs RP to recruit -- never a free grant.
     picks.forEach(p => { meta.discoveredStaff[p.id] = true; });
@@ -3173,6 +3271,11 @@
     if (!action || season.upgrades[id] || season.pp < action.cost) return;
     season.pp -= action.cost;
     season.upgrades[id] = true;
+    // Hall of Fame -- Specialist fires the first time EVERY action of one
+    // category has season.upgrades[id] true, which is naturally scoped to
+    // "this season" since season.upgrades resets every resetSeason().
+    const categoryActions = TRAINING_ACTIONS.filter(a => a.category === action.category);
+    if (categoryActions.every(a => season.upgrades[a.id])) unlockAchievement("specialist");
     renderTrainingFacilities();
   }
 
@@ -3383,12 +3486,22 @@
     const setBtn = document.getElementById("setActiveSystemBtn");
     if (setBtn) setBtn.addEventListener("click", () => setActiveSystem(setBtn.dataset.setactive));
   }
+  // Hall of Fame -- Maxed Out needs every HC track (Systems, Management,
+  // Reputation) at its own max level, checked from all 3 purchase
+  // functions below since any of them could be the one that completes it.
+  function checkMaxedOut() {
+    const sysMaxed = OFFENSIVE_SYSTEMS.every(s => systemLevel(s.id) >= s.costs.length);
+    const mgmtMaxed = MANAGEMENT_OPTIONS.every(m => managementLevel(m.id) >= m.costs.length);
+    const repMaxed = REPUTATION_OPTIONS.every(r => reputationLevel(r.id) >= r.costs.length);
+    if (sysMaxed && mgmtMaxed && repMaxed) unlockAchievement("maxedOut");
+  }
   function unlockSystemLevel(id, level) {
     const sys = OFFENSIVE_SYSTEMS.find(s => s.id === id);
     const current = systemLevel(id);
     if (level !== current + 1 || meta.xp < sys.costs[current]) return;
     meta.xp -= sys.costs[current];
     meta.systemLevels[id] = current + 1;
+    checkMaxedOut();
     saveGame();
     renderSystemList();
   }
@@ -3502,6 +3615,7 @@
     meta.xp -= opt.costs[current];
     meta.managementLevels[id] = current + 1;
     if (!roster.managementIds.includes(id)) roster.managementIds.push(id);
+    checkMaxedOut();
     saveGame();
     renderManagementList();
   }
@@ -3595,6 +3709,7 @@
     meta.xp -= opt.costs[current];
     meta.reputationLevels[id] = current + 1;
     if (!roster.reputationIds.includes(id)) roster.reputationIds.push(id);
+    checkMaxedOut();
     saveGame();
     renderReputationList();
   }
@@ -3789,6 +3904,13 @@
     if (meta.rp < cost) return;
     meta.rp -= cost;
     meta.unlockedStaff[id] = true;
+    // Hall of Fame -- Draft Class (one of every tier, career-wide) and
+    // Full Roster (one of every pool) only need checking on an actual new
+    // recruit, never on the early-return no-op above.
+    if (a.tier) meta.tiersRecruited[a.tier] = true;
+    if (["green", "blue", "purple", "red"].every(t => meta.tiersRecruited[t])) unlockAchievement("draftClass");
+    const pools = [ASSISTANTS, DCS, QBS, LINEMEN, SKILL_PLAYERS];
+    if (pools.every(pool => pool.some(x => meta.unlockedStaff[x.id]))) unlockAchievement("fullRoster");
     saveGame();
     if (isPlayer) renderRosterRolePage();
     else renderStaffUnlockPage();
@@ -4129,9 +4251,49 @@
   }
 
   // ---------- Hall of Fame ----------
+  function achievementRewardText(a) {
+    if (a.itemId) {
+      const entry = findRecruitById(a.itemId);
+      const role = ASSISTANTS.includes(entry) ? entry.category
+        : DCS.includes(entry) ? "Defensive Coordinator"
+        : QBS.includes(entry) ? "QB"
+        : entry.position;
+      return `Unlocks: ${entry.name} [${role}]`;
+    }
+    const parts = [];
+    if (a.xp) parts.push(`+${a.xp} XP`);
+    if (a.rp) parts.push(`+${a.rp} RP`);
+    return parts.join(" / ");
+  }
+  function renderHallOfFame() {
+    const ids = Object.keys(ACHIEVEMENTS);
+    const unlockedCount = ids.filter(id => meta.achievements[id]).length;
+    document.getElementById("hallOfFameProgress").textContent = `${unlockedCount}/${ids.length} unlocked`;
+    document.getElementById("hallOfFameList").innerHTML = ids.map(id => {
+      const a = ACHIEVEMENTS[id];
+      const unlocked = !!meta.achievements[id];
+      // Iron Coach tiers show a live progress readout while still locked.
+      let progressNote = "";
+      if (!unlocked && id.startsWith("ironCoach")) {
+        const threshold = Number(id.replace("ironCoach", ""));
+        progressNote = ` (${Math.min(meta.lifetimeSeasonsPlayed, threshold)}/${threshold} seasons)`;
+      }
+      return `
+        <div class="pick-card ${unlocked ? "selected" : "locked"}">
+          <div class="pick-card-main">
+            <span class="pick-card-name">${a.name}</span>
+            <span class="pick-card-badge ${unlocked ? "" : "locked-badge"}">${unlocked ? "✓ Unlocked" : "Locked"}</span>
+          </div>
+          <div class="pick-card-flavor">${a.desc}${progressNote}</div>
+          <div class="pick-card-perk">${achievementRewardText(a)}</div>
+        </div>
+      `;
+    }).join("");
+  }
   function showHallOfFame() {
     document.getElementById("mainMenuOverlay").classList.add("hidden");
     document.getElementById("hallOfFameOverlay").classList.remove("hidden");
+    renderHallOfFame();
   }
   function hallOfFameReturn() {
     document.getElementById("hallOfFameOverlay").classList.add("hidden");
@@ -4513,6 +4675,25 @@
     // Snapshot before any phase transition below, so the rest of this
     // function knows which leg was just played.
     const matchPhase = season.phase;
+    // Hall of Fame -- match-level checks that don't depend on the
+    // phase-transition logic below (season/career-level checks are woven
+    // into that logic further down, right where each condition becomes
+    // knowable).
+    season.rushYardsSeason += state.rushYardsThisMatch;
+    if (season.rushYardsSeason >= 300) unlockAchievement("workhorse");
+    if (state.oppTotalYards < 100) unlockAchievement("brickWall");
+    if (state.oppTurnoversThisMatch >= 3) unlockAchievement("takeaway");
+    if (won) {
+      unlockAchievement("firstWin");
+      const families = state.playFamiliesUsedThisMatch;
+      const isPlayoffMatch = matchPhase === "playoff";
+      if (isPlayoffMatch && families.size === 1 && families.has("run")) unlockAchievement("groundAndPound");
+      if (isPlayoffMatch && families.size > 0 && !families.has("run")) unlockAchievement("airRaid");
+      if (isPlayoffMatch && state.oppScore === 0) unlockAchievement("shutout");
+      if (Object.keys(FAMILY_LABELS).every(f => families.has(f))) unlockAchievement("fullArsenal");
+      if (state.trickPlaySuccessThisMatch) unlockAchievement("trickOrTreat");
+      if (state.enteredFinalDriveTrailing) unlockAchievement("clutch");
+    }
     if (won) {
       // Install-sourced cards only "prove themselves" (become eligible
       // for the end-of-season discovery lottery) if actually played in a
@@ -4538,16 +4719,31 @@
     let advanceTo = null; // "playoff" | "bowl"
     if (matchPhase === "regular") {
       if (isLastRegularMatch) {
-        if (positiveRecord) advanceTo = "playoff";
-        else isRunOver = true;
+        if (positiveRecord) {
+          advanceTo = "playoff";
+          unlockAchievement("homecoming");
+          if (season.losses === 0) unlockAchievement("perfectSeason");
+        } else {
+          isRunOver = true;
+        }
       }
     } else if (matchPhase === "playoff") {
       season.playoffWin = won;
-      if (won) advanceTo = "bowl";
-      else isRunOver = true;
+      if (won) {
+        unlockAchievement("playoffChampion");
+        advanceTo = "bowl";
+      } else {
+        isRunOver = true;
+      }
     } else if (matchPhase === "bowl") {
       season.bowlWin = won;
       isRunOver = true; // the Bowl is always the last leg, win or lose
+      if (won) {
+        unlockAchievement("bowlChampion");
+        meta.lifetimeBowlWins += 1;
+        if (meta.lifetimeBowlWins >= 2) unlockAchievement("backToBack");
+        if (meta.lifetimeBowlWins >= 3) unlockAchievement("dynasty");
+      }
     }
 
     let seasonXpEarned = 0;
@@ -4555,6 +4751,12 @@
     let seasonUnlocks = [];
     let installDiscoveries = [];
     if (isRunOver) {
+      // Career-level checks -- every completed season counts here
+      // (win, loss, or elimination alike), unlike the win-gated checks
+      // above.
+      meta.lifetimeSeasonsPlayed += 1;
+      [5, 15, 30, 50].forEach(n => { if (meta.lifetimeSeasonsPlayed >= n) unlockAchievement("ironCoach" + n); });
+      if (season.turnoversThisSeason === 0) unlockAchievement("ballSecurity");
       installDiscoveries = grantInstallDiscoveries();
       seasonXpEarned = calculateSeasonXP();
       meta.xp += seasonXpEarned;
