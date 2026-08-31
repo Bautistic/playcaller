@@ -212,18 +212,7 @@
   }
   .log.flash { color: var(--text); }
   .log-icon { width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
-  .hand-title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-  .hand-title-icon { width: 14px; height: 14px; flex-shrink: 0; fill: currentColor; }
+  .archetype-icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; fill: currentColor; }
 
   .hand {
     display: flex;
@@ -719,7 +708,7 @@
   </div>
 
   <div class="tendency-wrap" id="tendencyPanel">
-    <div class="tendency-title archetype-row"><span id="archetypeLabelPrefix">DC archetype</span>: <span class="archetype-label" id="archetypeLabel"></span></div>
+    <div class="tendency-title archetype-row"><svg class="archetype-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="m15,3v-1h-1v-1h-4v1h-1v1h-1v3h1v1h6v-1h1v-3h-1Zm-4,3v-1h-1v-2h1v-1h2v1h1v2h-1v1h-2Z"/><polygon points="20 5 20 22 19 22 19 23 5 23 5 22 4 22 4 5 5 5 5 4 7 4 7 7 8 7 8 8 16 8 16 7 17 7 17 4 19 4 19 5 20 5"/></svg><span id="archetypeLabelPrefix">DC archetype</span>: <span class="archetype-label" id="archetypeLabel"></span></div>
     <div class="tendency-title">
       <span>Defensive tendencies for D&amp;D</span>
       <span class="blitz-pct" id="blitzPct">Blitz 0%</span>
@@ -732,10 +721,6 @@
     <span id="logVal">Pick a play to start the drive.</span>
   </div>
 
-  <div class="hand-title">
-    <svg class="hand-title-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="m15,3v-1h-1v-1h-4v1h-1v1h-1v3h1v1h6v-1h1v-3h-1Zm-4,3v-1h-1v-2h1v-1h2v1h1v2h-1v1h-2Z"/><polygon points="20 5 20 22 19 22 19 23 5 23 5 22 4 22 4 5 5 5 5 4 7 4 7 7 8 7 8 8 16 8 16 7 17 7 17 4 19 4 19 5 20 5"/></svg>
-    Your Callsheet
-  </div>
   <div class="hand" id="handContainer"></div>
 
   <button class="sneak-btn" id="sneakBtn" style="display:none;"></button>
