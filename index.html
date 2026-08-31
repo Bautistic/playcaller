@@ -2977,7 +2977,6 @@
     firstWin: { name: "First Win", desc: "Win your first match.", xp: 2 },
     homecoming: { name: "Homecoming", desc: "Reach the Playoff for the first time.", xp: 2 },
     perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 5, rp: 5 },
-    playoffChampion: { name: "Playoff Champion", desc: "Win the Playoff.", xp: 5, rp: 5 },
     bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 8, rp: 8 },
     backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 different seasons.", itemId: "fieldgeneral_qb_red" },
     dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 3 times over your career.", xp: 12, rp: 12 },
@@ -4730,7 +4729,6 @@
     } else if (matchPhase === "playoff") {
       season.playoffWin = won;
       if (won) {
-        unlockAchievement("playoffChampion");
         advanceTo = "bowl";
       } else {
         isRunOver = true;
