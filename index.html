@@ -3059,16 +3059,16 @@
   }
 
   // Season-end reward pool (2026-08-26, expanded 2026-08-28, reworked
-  // 2026-08-31 to scale with how far the season went). How many slots you
-  // get depends on the furthest phase actually reached this season:
-  // regular-season elimination (never reached the Playoff) = 1, green-tier
-  // only -- 3 felt too generous for a season that didn't even make the
-  // Playoff. Reaching the Playoff (won or lost) = 2, any tier. Reaching
-  // the Bowl (won or lost) = 3, any tier, unchanged from before.
+  // 2026-08-31 to scale with how far the season went, capped at 2 the
+  // same day). How many slots you get depends on the furthest phase
+  // actually reached this season: regular-season elimination (never
+  // reached the Playoff) = 1, green-tier only -- 3 felt too generous for
+  // a season that didn't even make the Playoff. Reaching the Playoff OR
+  // the Bowl (won or lost, either way) = 2, any tier -- 2 is the hard
+  // cap now, Bowl no longer grants a 3rd slot.
   function seasonRewardCount(matchPhase) {
     if (matchPhase === "regular") return 1;
-    if (matchPhase === "playoff") return 2;
-    return 3; // bowl
+    return 2; // playoff or bowl
   }
   // Weight = cheap-item bias (1/cost) + a performance term that grows
   // with cost, so a better season shifts the odds toward pricier/rarer
