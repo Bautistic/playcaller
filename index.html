@@ -2388,7 +2388,7 @@
     // Career stat sheet (Statistics page). Updated unconditionally on
     // every match in showFinalModal, independent of the achievements
     // above (though a few achievements read the same underlying events).
-    totalMatches: 0, totalPlayoffMatches: 0, totalWins: 0, totalPoints: 0, totalTDs: 0, totalFGs: 0, totalTurnoversForced: 0,
+    totalMatches: 0, totalPlayoffMatches: 0, totalWins: 0, totalPlayoffWins: 0, totalPoints: 0, totalTDs: 0, totalFGs: 0, totalTurnoversForced: 0, maxPointsInSeason: 0,
   };
 
   // Persistence -- only `meta` (permanent career progression: XP/RP,
@@ -2452,6 +2452,13 @@
     document.getElementById("resetConfirmBtn").addEventListener("click", () => {
       saveDisabled = true;
       localStorage.removeItem(SAVE_KEY);
+      // Hide the confirmation dialog (and every other overlay) before the
+      // reload so the very last frame the player sees, right up until the
+      // fresh page paints, is the main menu underneath -- not a lingering
+      // "Reset progress?" dialog.
+      hideModal();
+      document.querySelectorAll(".overlay").forEach(el => { if (el.id !== "mainMenuOverlay") el.classList.add("hidden"); });
+      document.getElementById("mainMenuOverlay").classList.remove("hidden");
       location.reload();
     });
   }
@@ -2933,10 +2940,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0 };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0 };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0 };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0 };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
@@ -4327,11 +4334,12 @@
     const rows = [
       ["Total seasons", meta.lifetimeSeasonsPlayed],
       ["Total matches", `${meta.totalMatches} (${meta.totalPlayoffMatches} playoffs)`],
-      ["Total wins", meta.totalWins],
+      ["Total wins", `${meta.totalWins} (${meta.totalPlayoffWins} in playoffs)`],
       ["Total points", meta.totalPoints],
       ["Total touchdowns", meta.totalTDs],
       ["Total field goals", meta.totalFGs],
       ["Total turnovers forced", meta.totalTurnoversForced],
+      ["Most points in a season", meta.maxPointsInSeason],
     ];
     document.getElementById("statisticsList").innerHTML = rows.map(([label, value]) =>
       `<div><span>${label}</span><span>${value}</span></div>`
@@ -4734,7 +4742,9 @@
     if (won) {
       meta.totalWins += 1;
       if (meta.totalWins >= 50) unlockAchievement("winColumn");
+      if (matchPhase === "playoff" || matchPhase === "bowl") meta.totalPlayoffWins += 1;
     }
+    season.pointsThisSeason += state.score;
     meta.totalPoints += state.score;
     [100, 250, 500].forEach(n => { if (meta.totalPoints >= n) unlockAchievement("pointMachine" + n); });
     meta.totalTDs += state.driveResults.filter(r => r.reason === "touchdown").length;
@@ -4827,6 +4837,7 @@
       meta.lifetimeSeasonsPlayed += 1;
       [10, 25, 50].forEach(n => { if (meta.lifetimeSeasonsPlayed >= n) unlockAchievement("ironCoach" + n); });
       if (season.turnoversThisSeason === 0) unlockAchievement("ballSecurity");
+      meta.maxPointsInSeason = Math.max(meta.maxPointsInSeason, season.pointsThisSeason);
       // Back-to-Back needs 2 Bowl wins IN A ROW -- any season that ends
       // without one (elimination, playoff loss, or bowl loss alike) breaks
       // the streak. Dynasty (career total, non-consecutive) uses
