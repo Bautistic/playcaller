@@ -3295,20 +3295,9 @@
   // Staff/Key Player recruit flow. Every pick carries a `role` label
   // (Front Office category / real position) so the end-of-season announcement
   // can show more than just a name -- see `unlocksText` in showFinalModal.
-  function grantSeasonRewards(matchPhase) {
-    // Beating a named DC (Playoff/Bowl only, see ARCHETYPE_DC_ID) now
-    // guarantees their discovery instead of just entering them in the
-    // weighted lottery below -- beating a specific opponent is a bigger
-    // deal than an anonymous Assistant/Player draw, so it shouldn't be
-    // left to RNG. This automatic pick still consumes one of the season's
-    // slots (the remaining slots, if any, are filled by the weighted draw
-    // from every other category). A regular-season-elimination season can
-    // never have a beaten DC (the Playoff was never reached), so this
-    // never applies to the 1-green-slot tier in practice.
-    const autoDcPicks = DCS
-      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id])
-      .map(d => ({ kind: "coach", id: d.id, name: d.name, role: "Defensive Coordinator", tier: d.tier }));
-    const slotsLeft = Math.max(0, seasonRewardCount(matchPhase) - autoDcPicks.length);
+  // Factored out of grantSeasonRewards() (2026-09-02) so buyExtraDiscovery()
+  // can draw from the exact same pool/tier rules for its RP-bought pick.
+  function buildSeasonRewardPool(matchPhase) {
     // ATH is known from game start (discoveredFromStart) -- not a reward
     // target, nothing left to discover about him.
     const staffEntries = ASSISTANTS
@@ -3331,11 +3320,47 @@
     let pool = [...staffEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
       .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id));
     if (matchPhase === "regular") pool = pool.filter(e => e.tier === "green");
+    return pool;
+  }
+  function grantSeasonRewards(matchPhase) {
+    // Beating a named DC (Playoff/Bowl only, see ARCHETYPE_DC_ID) now
+    // guarantees their discovery instead of just entering them in the
+    // weighted lottery below -- beating a specific opponent is a bigger
+    // deal than an anonymous Assistant/Player draw, so it shouldn't be
+    // left to RNG. This automatic pick still consumes one of the season's
+    // slots (the remaining slots, if any, are filled by the weighted draw
+    // from every other category). A regular-season-elimination season can
+    // never have a beaten DC (the Playoff was never reached), so this
+    // never applies to the 1-green-slot tier in practice.
+    const autoDcPicks = DCS
+      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id])
+      .map(d => ({ kind: "coach", id: d.id, name: d.name, role: "Defensive Coordinator", tier: d.tier }));
+    const slotsLeft = Math.max(0, seasonRewardCount(matchPhase) - autoDcPicks.length);
+    const pool = buildSeasonRewardPool(matchPhase);
     const weightedPicks = weightedSampleWithoutReplacement(pool, slotsLeft);
     const picks = [...autoDcPicks, ...weightedPicks];
     // Discovered only, still needs RP to recruit -- never a free grant.
     picks.forEach(p => { meta.discoveredStaff[p.id] = true; });
     return picks;
+  }
+  // RP sink for the end-of-season screen (2026-09-02): once a season is
+  // fully over, RP that's already spent everything discoverable has no use
+  // left -- this lets the player buy ONE extra weighted pick from the exact
+  // same pool grantSeasonRewards() just drew from (so it respects the same
+  // regular-season-is-green-only rule), consuming EXTRA_DISCOVERY_COST RP.
+  // Returns the picked entry, or null if unaffordable or the pool is
+  // already empty (everything discoverable already is).
+  const EXTRA_DISCOVERY_COST = 15;
+  function buyExtraDiscovery(matchPhase) {
+    if (meta.rp < EXTRA_DISCOVERY_COST) return null;
+    const pool = buildSeasonRewardPool(matchPhase);
+    if (!pool.length) return null;
+    const [pick] = weightedSampleWithoutReplacement(pool, 1);
+    if (!pick) return null;
+    meta.rp -= EXTRA_DISCOVERY_COST;
+    meta.discoveredStaff[pick.id] = true;
+    saveGame();
+    return pick;
   }
 
   // End-of-season discovery for every single-card Install card (Install
@@ -5101,8 +5126,16 @@
         : matchPhase === "playoff"
           ? `<p class="pp-earned record-negative">Lost in the Playoff.</p>`
           : (season.bowlWin ? `<p class="pp-earned season-complete">Bowl Champions!</p>` : `<p class="pp-earned record-negative">Lost the Bowl.</p>`);
-      nextStepDesc = phaseLine + `<p class="pp-earned season-complete">End of the season! You earned ${seasonXpEarned} XP + ${seasonRpEarned} RP, and unlocked the following: ${unlocksText}.</p>${installLine}`;
-      nextStepBtn = `<button id="restartBtn">Play Again</button><button class="menu-btn" id="menuFromFinalBtn">Menu</button>`;
+      nextStepDesc = phaseLine + `<p class="pp-earned season-complete" id="seasonUnlocksLine">End of the season! You earned ${seasonXpEarned} XP + ${seasonRpEarned} RP, and unlocked the following: ${unlocksText}.</p>${installLine}`;
+      // RP sink: once every discoverable Coach/Player is already found,
+      // meta.rp has nothing left to buy -- this lets a player with spare RP
+      // (and something still left in the pool) buy one more weighted pick
+      // here instead of it just piling up unused all the way to next season.
+      const canBuyExtraDiscovery = meta.rp >= EXTRA_DISCOVERY_COST && buildSeasonRewardPool(matchPhase).length > 0;
+      const extraDiscoveryBtn = canBuyExtraDiscovery
+        ? `<button class="menu-btn" id="extraDiscoveryBtn">Spend ${EXTRA_DISCOVERY_COST} RP for +1 discovery</button>`
+        : "";
+      nextStepBtn = `${extraDiscoveryBtn}<button id="restartBtn">Play Again</button><button class="menu-btn" id="menuFromFinalBtn">Menu</button>`;
     }
 
     modalContent.innerHTML = `
@@ -5120,6 +5153,17 @@
     if (isRunOver) {
       document.getElementById("restartBtn").addEventListener("click", restartGame);
       document.getElementById("menuFromFinalBtn").addEventListener("click", () => { hideModal(); resetSeason(); showMainMenu(); });
+      const extraBtn = document.getElementById("extraDiscoveryBtn");
+      if (extraBtn) {
+        extraBtn.addEventListener("click", () => {
+          const pick = buyExtraDiscovery(matchPhase);
+          if (!pick) return;
+          seasonUnlocks.push(pick);
+          document.getElementById("seasonUnlocksLine").textContent =
+            `End of the season! You earned ${seasonXpEarned} XP + ${seasonRpEarned} RP, and unlocked the following: ${seasonUnlocks.map(c => `${c.name} [${c.role}]`).join(", ")}.`;
+          extraBtn.remove();
+        });
+      }
     } else {
       // Mid-regular-season, or advancing to Playoff/Bowl -- all three lead
       // to a Training Facilities stop next (2026-08-27: every match now
