@@ -1844,11 +1844,11 @@
     }
     let yards = Math.round(rawYards * yardsMod);
     yards = Math.max(yards, card.minYards ?? 0);
-    return { outcome: "gain", yards, coverageId, avgYards: profile.avgYards };
+    return { outcome: "gain", yards, coverageId, avgYards: profile.avgYards, depthTier: profile.depthTier };
   }
 
-  const BIG_PLAY_RUN_FLAVORS = ["Breaks a big one!", "Nobody touches him!", "Explosive run!"];
-  const BIG_PLAY_PASS_FLAVORS = ["Huge gain after the catch!", "Breaks a tackle for extra yards!", "Explosive play!"];
+  const BIG_PLAY_RUN_FLAVORS = ["Breaks a big one!", "Nobody touches him!", "Explosive run!", "Nobody lays a hand on him!", "Turns the corner and takes off!", "Housecall!"];
+  const BIG_PLAY_PASS_FLAVORS = ["Huge gain after the catch!", "Breaks a tackle for extra yards!", "Explosive play!", "Finds the soft spot in the defense!", "Streaking wide open!", "Lights it up downfield!"];
   function bigPlayFlavor(card, result) {
     if (result.outcome !== "gain" || !result.avgYards || result.yards < result.avgYards * 1.7) return "";
     const pool = card.type === "run" ? BIG_PLAY_RUN_FLAVORS : BIG_PLAY_PASS_FLAVORS;
@@ -1857,7 +1857,35 @@
   // Why the pass fell incomplete, based on the coverage family that
   // actually defended it -- man beats the receiver, match is a well-played
   // defensive rep, zone reads as the QB missing his target.
-  const INCOMPLETE_REASONS = { man: "Receiver's hands fail him!", match: "Great coverage by the DB!", zone: "The throw lacks precision!" };
+  const INCOMPLETE_REASONS = {
+    man: ["Receiver's hands fail him!", "Tightly covered, no separation!"],
+    match: ["Great coverage by the DB!", "Textbook defensive rep!"],
+    zone: ["The throw lacks precision!", "Off target under pressure!"],
+  };
+  function incompleteFlavor(coverage) {
+    const pool = INCOMPLETE_REASONS[coverage.family];
+    return pool ? pool[Math.floor(Math.random() * pool.length)] : "";
+  }
+  // Normal (non-big-play) gain flavor -- most phrases apply to any run/pass,
+  // but a couple are only accurate for a specific play shape: "up the
+  // middle" only reads right on an interior run, "underneath" only on a
+  // short-depth pass, so those two are added to the pool conditionally
+  // instead of always being eligible.
+  function runGainFlavor(card) {
+    const pool = ["Picks up positive yardage.", "Grinds it out.", "Moves the chains a little."];
+    if (card.runDir === "interior") pool.push("Tough yards up the middle.");
+    return " " + pool[Math.floor(Math.random() * pool.length)];
+  }
+  function passGainFlavor(card, result) {
+    const pool = ["Clean pitch and catch.", "Rhythm throw, right on target.", "Gets it out on time."];
+    if (result.depthTier === "short") pool.push("Finds his man underneath.");
+    return " " + pool[Math.floor(Math.random() * pool.length)];
+  }
+  const TACKLE_FOR_LOSS_FLAVORS = ["Stuffed at the line!", "No room to run!", "Defense wins this rep!"];
+  const SACK_FLAVORS = ["Pressure gets home!", "Protection breaks down!", "Blindsided!", "Collapses the pocket!"];
+  const FUMBLE_FLAVORS = ["Ball comes loose!", "Stripped clean!", "Costly mistake!"];
+  const INTERCEPTION_FLAVORS = ["Picked off!", "Defense reads it perfectly!", "Terrible decision under pressure!"];
+  function randomFlavor(pool) { return " " + pool[Math.floor(Math.random() * pool.length)]; }
 
   function outcomeMessage(card, result) {
     const coverage = COVERAGES[result.coverageId];
@@ -1865,19 +1893,24 @@
     const prefix = `${coverage.name} — `;
     switch (result.outcome) {
       case "fumble":
-        return prefix + `FUMBLE on ${cardLabel}! Turnover. End of drive.`;
+        return prefix + `FUMBLE on ${cardLabel}! Turnover. End of drive.` + randomFlavor(FUMBLE_FLAVORS);
       case "sack":
-        return prefix + `Sack! ${cardLabel} loses ${Math.abs(result.yards)} yard(s).`;
+        return prefix + `Sack! ${cardLabel} loses ${Math.abs(result.yards)} yard(s).` + randomFlavor(SACK_FLAVORS);
       case "interception":
-        return prefix + `INTERCEPTION on ${cardLabel}! End of drive.`;
+        return prefix + `INTERCEPTION on ${cardLabel}! End of drive.` + randomFlavor(INTERCEPTION_FLAVORS);
       case "incomplete": {
-        const reason = INCOMPLETE_REASONS[coverage.family];
+        const reason = incompleteFlavor(coverage);
         return prefix + `Incomplete pass (${cardLabel}).` + (reason ? ` ${reason}` : "");
       }
       case "gain": {
-        const lossNote = result.yards < 0 ? " Tackle for loss!" : "";
-        if (card.type === "run") return prefix + `${cardLabel} gains ${result.yards} yard(s).${lossNote}` + bigPlayFlavor(card, result);
-        return prefix + `${cardLabel} completed for ${result.yards} yard(s).${lossNote}` + bigPlayFlavor(card, result);
+        const lossNote = result.yards < 0 ? randomFlavor(TACKLE_FOR_LOSS_FLAVORS) : "";
+        const bigFlavor = bigPlayFlavor(card, result);
+        // Big-play color takes priority over the normal-gain flavor (never
+        // both) -- only reach for the plain pool when this snap didn't
+        // clear the big-play threshold.
+        const normalFlavor = bigFlavor ? "" : (card.type === "run" ? runGainFlavor(card) : passGainFlavor(card, result));
+        if (card.type === "run") return prefix + `${cardLabel} gains ${result.yards} yard(s).${lossNote}` + bigFlavor + normalFlavor;
+        return prefix + `${cardLabel} completed for ${result.yards} yard(s).${lossNote}` + bigFlavor + normalFlavor;
       }
     }
   }
