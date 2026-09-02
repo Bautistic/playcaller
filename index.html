@@ -530,6 +530,22 @@
   .menu-btn.upgrade-active { border-color: var(--accent-2); color: var(--accent-2); }
   .xp-highlight, .xp-highlight strong { color: var(--accent); }
   .menu-btn-sub { display: block; font-size: 11px; font-weight: 400; opacity: 0.75; margin-top: 2px; }
+  /* Level badge beside the row name instead of below it, on the Upgrades
+     page's compact rows (Systems nav button + Management/Reputation
+     accordion headers). */
+  #favoriteSystemBtn,
+  .upgrade-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  #favoriteSystemBtn .menu-btn-sub,
+  .upgrade-option-header .menu-btn-sub {
+    display: inline;
+    margin-top: 0;
+  }
+  .upgrade-option-header .menu-btn-sub { white-space: nowrap; }
   #startSeasonMenuBtn, #startMatchBtn { background: var(--accent); margin-bottom: 8px; }
   .roster-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .roster-tile {
@@ -820,7 +836,7 @@
     <h2>Upgrades</h2>
     <p class="setup-intro xp-highlight">XP: <strong id="hcUpgradeXpVal">0</strong></p>
     <div class="pick-card selected" id="coachSlotsCard" style="margin-top:6px;"></div>
-    <button class="menu-btn menu-btn-accent" id="favoriteSystemBtn">Systems<span class="menu-btn-sub" id="favoriteSystemSub"></span></button>
+    <button class="menu-btn menu-btn-accent" id="favoriteSystemBtn"><span>Systems</span><span class="menu-btn-sub" id="favoriteSystemSub"></span></button>
     <span id="managementListXpVal" style="display:none;"></span>
     <div id="managementListButtons"></div>
     <span id="reputationListXpVal" style="display:none;"></span>
@@ -3707,7 +3723,7 @@
       const expanded = managementExpandedId === opt.id;
       return `
         <div class="menu-btn${isActive ? " upgrade-active" : ""}" data-id="${opt.id}">
-          <div class="upgrade-option-header">${opt.name}</div>
+          <div class="upgrade-option-header"><span>${opt.name}</span><span class="menu-btn-sub">Lvl ${managementLevel(opt.id)}/${opt.costs.length}</span></div>
           ${expanded ? managementOptionBodyHtml(opt) : ""}
         </div>
       `;
@@ -3789,7 +3805,7 @@
       const expanded = reputationExpandedId === opt.id;
       return `
         <div class="menu-btn${isActive ? " upgrade-active" : ""}" data-id="${opt.id}">
-          <div class="upgrade-option-header">${opt.name}</div>
+          <div class="upgrade-option-header"><span>${opt.name}</span><span class="menu-btn-sub">Lvl ${reputationLevel(opt.id)}/${opt.costs.length}</span></div>
           ${expanded ? reputationOptionBodyHtml(opt) : ""}
         </div>
       `;
