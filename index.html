@@ -1942,9 +1942,14 @@
   // draw favors run plays at 4 yards or less to go, and pass plays at 5+
   // yards to go (no neutral zone -- every distance is covered) -- falls back
   // to a normal random draw across the whole pool if no card of that family
-  // happens to be in it.
+  // happens to be in it. Headset Comms (Lvl 3) extends the same bias to
+  // every down, not just 3rd/4th.
   function biasedPoolDrawIndex() {
-    if (managementLevel("chemistry") >= 2 && (state.down === 3 || state.down === 4)) {
+    const chemistryLevel = managementLevel("chemistry");
+    // Lvl 2 (Staff Trust) only biases 3rd/4th down; Lvl 3 (Headset Comms)
+    // extends the same bias to every down.
+    const biasActive = chemistryLevel >= 3 || (chemistryLevel >= 2 && (state.down === 3 || state.down === 4));
+    if (biasActive) {
       let family = null;
       if (state.distanceToGo <= 4) family = "run";
       else if (state.distanceToGo >= 5) family = "pass";
@@ -2318,7 +2323,7 @@
       perk: [
         { name: "Team Trust", lines: ["+3 Playbook slots"] },
         { name: "Staff Trust", lines: ["On 3rd/4th down, the next drawn card favors run (≤4 yds to go) or pass (≥5 yds to go) when one is available"] },
-        { name: "Headset Comms", lines: ["+1 card in hand"] },
+        { name: "Headset Comms", lines: ["Staff Trust's run/pass bias applies on every down, not just 3rd/4th"] },
       ],
       costs: [5, 10, 20] },
   ];
@@ -2652,9 +2657,10 @@
   function deckCapacity() {
     return 12 + (managementLevel("chemistry") >= 1 ? 3 : 0);
   }
-  // Hand size -- 3 by default, +1 once Chemistry Lvl 3 (Headset Comms) is owned.
+  // Hand size is always 3 -- the match page's card display is built for
+  // exactly 3 side-by-side tiles.
   function handSize() {
-    return managementLevel("chemistry") >= 3 ? 4 : 3;
+    return 3;
   }
   function managementLevel(id) {
     return meta.managementLevels[id] || 0;
