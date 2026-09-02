@@ -216,8 +216,30 @@
 
   .hand {
     display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
+  .hand .card-btn {
+    flex: 1 1 0;
+    aspect-ratio: 3 / 4;
+    display: flex;
     flex-direction: column;
-    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 6px;
+    gap: 8px;
+  }
+  .hand .card-btn .card-name {
+    font-size: 14px;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .hand .card-tags-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
   .card-btn {
     display: flex;
@@ -4715,13 +4737,9 @@
         .map(t => `<span class="card-tag">${t}</span>`)
         .join("");
       btn.innerHTML = `
-        <div class="card-top">
-          <div class="card-left">
-            <span class="card-name">${card.name}</span>
-            ${tagsHtml}
-          </div>
-          <span class="card-type-tag ${card.family}">${FAMILY_LABELS[card.family]}</span>
-        </div>
+        <span class="card-name">${card.name}</span>
+        <span class="card-type-tag ${card.family}">${FAMILY_LABELS[card.family]}</span>
+        <div class="card-tags-row">${tagsHtml}</div>
       `;
       btn.addEventListener("click", () => playCard(i));
       handContainer.appendChild(btn);
