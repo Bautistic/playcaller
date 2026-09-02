@@ -678,6 +678,7 @@
   }
   .final-summary div { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
   .final-summary div:last-child { border-bottom: none; }
+  .final-summary div.stats-divider { border-bottom: 1.5px solid var(--btn-teal); margin-bottom: 10px; padding-bottom: 6px; }
   .final-summary div.final-total {
     border-top: 1px solid rgba(255,255,255,0.15);
     margin-top: 4px;
@@ -2476,7 +2477,7 @@
     // Career stat sheet (Statistics page). Updated unconditionally on
     // every match in showFinalModal, independent of the achievements
     // above (though a few achievements read the same underlying events).
-    totalMatches: 0, totalPlayoffMatches: 0, totalWins: 0, totalPlayoffWins: 0, totalPoints: 0, totalTDs: 0, totalFGs: 0, totalTurnoversForced: 0, maxPointsInSeason: 0,
+    totalMatches: 0, totalPlayoffMatches: 0, totalWins: 0, totalPlayoffWins: 0, totalPoints: 0, totalTDs: 0, totalFGs: 0, totalTurnoversForced: 0, maxPointsInSeason: 0, maxTDsInSeason: 0, maxTurnoversInSeason: 0,
     careerBeatenDcIds: {},
   };
 
@@ -3094,10 +3095,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, allWinsClose: true };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, allWinsClose: true };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
@@ -4504,14 +4505,16 @@
       ["Total seasons", meta.lifetimeSeasonsPlayed],
       ["Total matches", `${meta.totalMatches} (${meta.totalPlayoffMatches} playoffs)`],
       ["Total wins", `${meta.totalWins} (${meta.totalPlayoffWins} in playoffs)`],
-      ["Total Bowls won", meta.lifetimeBowlWins],
+      ["Total Bowls won", meta.lifetimeBowlWins, "stats-divider"],
       ["Total points", meta.totalPoints],
-      ["Total touchdowns", meta.totalTDs],
-      ["Total turnovers forced", meta.totalTurnoversForced],
       ["Most points in a season", meta.maxPointsInSeason],
+      ["Total touchdowns", meta.totalTDs],
+      ["Most touchdowns in a season", meta.maxTDsInSeason],
+      ["Total turnovers forced", meta.totalTurnoversForced],
+      ["Most turnovers in a season", meta.maxTurnoversInSeason],
     ];
-    document.getElementById("statisticsList").innerHTML = rows.map(([label, value]) =>
-      `<div><span>${label}</span><span>${value}</span></div>`
+    document.getElementById("statisticsList").innerHTML = rows.map(([label, value, cls]) =>
+      `<div${cls ? ` class="${cls}"` : ""}><span>${label}</span><span>${value}</span></div>`
     ).join("");
   }
   function showStatistics() {
@@ -4912,12 +4915,15 @@
     season.pointsThisSeason += state.score;
     meta.totalPoints += state.score;
     [100, 250, 500].forEach(n => { if (meta.totalPoints >= n) unlockAchievement("pointMachine" + n); });
-    meta.totalTDs += state.driveResults.filter(r => r.reason === "touchdown").length;
+    const tdsThisMatch = state.driveResults.filter(r => r.reason === "touchdown").length;
+    season.tdsThisSeason += tdsThisMatch;
+    meta.totalTDs += tdsThisMatch;
     if (meta.totalTDs >= 50) unlockAchievement("touchdownKing");
     const fgsThisMatch = state.driveResults.filter(r => r.reason === "fieldGoalGood").length;
     meta.totalFGs += fgsThisMatch;
     if (meta.totalFGs >= 50) unlockAchievement("automatic");
     if (fgsThisMatch >= 3) unlockAchievement("specialTeamsAce");
+    season.turnoversForcedThisSeason += state.oppTurnoversThisMatch;
     meta.totalTurnoversForced += state.oppTurnoversThisMatch;
     if (meta.totalTurnoversForced >= 20) unlockAchievement("ballhawk");
     // Nail-Biter needs EVERY match this season to be a close win -- flips
@@ -5017,6 +5023,8 @@
       [10, 25, 50].forEach(n => { if (meta.lifetimeSeasonsPlayed >= n) unlockAchievement("ironCoach" + n); });
       if (season.turnoversThisSeason === 0) unlockAchievement("ballSecurity");
       meta.maxPointsInSeason = Math.max(meta.maxPointsInSeason, season.pointsThisSeason);
+      meta.maxTDsInSeason = Math.max(meta.maxTDsInSeason, season.tdsThisSeason);
+      meta.maxTurnoversInSeason = Math.max(meta.maxTurnoversInSeason, season.turnoversForcedThisSeason);
       // Nail-Biter: season.allWinsClose only survives this far if every
       // single match this season was both won AND close (see the
       // unconditional check above) -- a loss anywhere already flipped it
