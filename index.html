@@ -3095,10 +3095,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
@@ -3189,6 +3189,9 @@
     rivalSlayer: { name: "Rival Slayer", desc: "Beat every costed Defensive Coordinator (Théo Zola, Olivier Maignan, Ulrich Muller) at least once over your career.", xp: 3, rp: 3 },
     specialTeamsAce: { name: "Special Teams Ace", desc: "Make 3 field goals in a single match.", xp: 2, rp: 2 },
     nailBiter: { name: "Nail-Biter", desc: "Win every match of a season, including the Bowl, by 7 points or fewer each time.", xp: 5, rp: 5 },
+    touchdownSpree: { name: "Touchdown Spree", desc: "Score 10 touchdowns in a single season.", xp: 5, rp: 5 },
+    explosiveOffense: { name: "Explosive Offense", desc: "Score 100 points in a single season.", xp: 5, rp: 5 },
+    takeawayStreak: { name: "Takeaway Streak", desc: "Force at least one turnover in every match of a season, including the Bowl.", xp: 5, rp: 5 },
     collector: { name: "Collector", desc: "Unlock every red-tier item reward in the Hall of Fame.", xp: 5, rp: 5 },
     achievementHunter: { name: "Achievement Hunter", desc: "Unlock 20 Hall of Fame achievements.", xp: 5, rp: 5 },
   };
@@ -4931,6 +4934,9 @@
     // checked unconditionally (win or not) so a loss/blowout anywhere in
     // the season disqualifies it even on a match that isn't the last one.
     if (!won || (state.score - state.oppScore) > 7) season.allWinsClose = false;
+    // Takeaway Streak needs a forced turnover in EVERY match this season --
+    // same unconditional-flip pattern as Nail-Biter above.
+    if (state.oppTurnoversThisMatch === 0) season.allMatchesTookTurnover = false;
     // Hall of Fame -- match-level checks that don't depend on the
     // phase-transition logic below (season/career-level checks are woven
     // into that logic further down, right where each condition becomes
@@ -5025,12 +5031,18 @@
       meta.maxPointsInSeason = Math.max(meta.maxPointsInSeason, season.pointsThisSeason);
       meta.maxTDsInSeason = Math.max(meta.maxTDsInSeason, season.tdsThisSeason);
       meta.maxTurnoversInSeason = Math.max(meta.maxTurnoversInSeason, season.turnoversForcedThisSeason);
+      if (season.tdsThisSeason >= 10) unlockAchievement("touchdownSpree");
+      if (season.pointsThisSeason >= 100) unlockAchievement("explosiveOffense");
       // Nail-Biter: season.allWinsClose only survives this far if every
       // single match this season was both won AND close (see the
       // unconditional check above) -- a loss anywhere already flipped it
       // false, so reaching isRunOver with it still true means the season
       // was a clean, close sweep all the way to the Bowl.
       if (season.allWinsClose) unlockAchievement("nailBiter");
+      // Takeaway Streak: like Nail-Biter, "including the Bowl" means the
+      // season must have gone the full distance -- matchPhase === "bowl"
+      // here means the match that just ended isRunOver was the Bowl leg.
+      if (matchPhase === "bowl" && season.allMatchesTookTurnover) unlockAchievement("takeawayStreak");
       // Back-to-Back needs 2 Bowl wins IN A ROW -- any season that ends
       // without one (elimination, playoff loss, or bowl loss alike) breaks
       // the streak. Dynasty (career total, non-consecutive) uses
