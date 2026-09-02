@@ -821,8 +821,10 @@
     <p class="setup-intro xp-highlight">XP: <strong id="hcUpgradeXpVal">0</strong></p>
     <div class="pick-card selected" id="coachSlotsCard" style="margin-top:6px;"></div>
     <button class="menu-btn menu-btn-accent" id="favoriteSystemBtn">Systems<span class="menu-btn-sub" id="favoriteSystemSub"></span></button>
-    <button class="menu-btn menu-btn-accent" id="managementBtn">Management</button>
-    <button class="menu-btn menu-btn-accent" id="reputationBtn">Reputation</button>
+    <span id="managementListXpVal" style="display:none;"></span>
+    <div id="managementListButtons"></div>
+    <span id="reputationListXpVal" style="display:none;"></span>
+    <div id="reputationListButtons"></div>
     <button class="menu-btn return-btn" id="coachSlotsBackBtn" style="margin-top:14px;">Return</button>
   </div>
 </div>
@@ -834,24 +836,6 @@
     <div id="systemCapacityBox"></div>
     <div id="systemListButtons"></div>
     <button class="menu-btn return-btn" id="systemListBackBtn" style="margin-top:14px;">Return</button>
-  </div>
-</div>
-
-<div class="overlay hidden" id="managementListOverlay">
-  <div class="modal launch-modal">
-    <h2>Management</h2>
-    <p class="setup-intro xp-highlight">XP: <strong id="managementListXpVal">0</strong></p>
-    <div id="managementListButtons"></div>
-    <button class="menu-btn return-btn" id="managementListBackBtn" style="margin-top:14px;">Return</button>
-  </div>
-</div>
-
-<div class="overlay hidden" id="reputationListOverlay">
-  <div class="modal launch-modal">
-    <h2>Reputation</h2>
-    <p class="setup-intro xp-highlight">XP: <strong id="reputationListXpVal">0</strong></p>
-    <div id="reputationListButtons"></div>
-    <button class="menu-btn return-btn" id="reputationListBackBtn" style="margin-top:14px;">Return</button>
   </div>
 </div>
 
@@ -3544,6 +3528,8 @@
     document.getElementById("favoriteSystemSub").textContent = sysActive.length
       ? sysActive.join(", ")
       : `0/${systemCapacity()}`;
+    renderManagementList();
+    renderReputationList();
   }
 
   // HC Slot 1 (Favorite Offensive System) -- clicking an option expands an
@@ -3660,17 +3646,8 @@
   // HC Slot 2 (Management) -- same inline-accordion pattern as Offensive
   // Systems above, just against MANAGEMENT_OPTIONS. No "Set as Management"
   // button: options auto-apply on purchase (see unlockManagementLevel).
-  function openManagementList() {
-    document.getElementById("coachSlotsOverlay").classList.add("hidden");
-    document.getElementById("managementListOverlay").classList.remove("hidden");
-    managementExpandedId = null;
-    renderManagementList();
-  }
-  function managementListBack() {
-    document.getElementById("managementListOverlay").classList.add("hidden");
-    document.getElementById("coachSlotsOverlay").classList.remove("hidden");
-    renderCoachSlots();
-  }
+  // Rendered directly on the Upgrades page (renderCoachSlots) rather than
+  // its own page -- no dedicated open/back navigation needed anymore.
   // Clicking an option doesn't open a panel below it -- the button itself
   // grows to show its flavor/perk/level-buy content (XP total is omitted,
   // it's already shown at the top of the page). Active options drop the
@@ -3755,22 +3732,13 @@
     if (!roster.managementIds.includes(id)) roster.managementIds.push(id);
     checkMaxedOut();
     saveGame();
-    renderManagementList();
+    renderCoachSlots();
   }
 
   // HC Slot 3 (Reputation) -- identical inline-accordion pattern, against
   // REPUTATION_OPTIONS. Same auto-apply-on-purchase behavior as Management.
-  function openReputationList() {
-    document.getElementById("coachSlotsOverlay").classList.add("hidden");
-    document.getElementById("reputationListOverlay").classList.remove("hidden");
-    reputationExpandedId = null;
-    renderReputationList();
-  }
-  function reputationListBack() {
-    document.getElementById("reputationListOverlay").classList.add("hidden");
-    document.getElementById("coachSlotsOverlay").classList.remove("hidden");
-    renderCoachSlots();
-  }
+  // Rendered directly on the Upgrades page (renderCoachSlots), same as
+  // Management above -- no dedicated open/back navigation needed anymore.
   let reputationExpandedId = null;
   // See managementOptionBodyHtml's comment above for the opt.perk shape
   // (single string vs per-level array of string/{name,lines} entries).
@@ -3849,7 +3817,7 @@
     if (!roster.reputationIds.includes(id)) roster.reputationIds.push(id);
     checkMaxedOut();
     saveGame();
-    renderReputationList();
+    renderCoachSlots();
   }
 
   let staffUnlockSelectedId = null;
@@ -5045,10 +5013,6 @@
   document.getElementById("coachSlotsBackBtn").addEventListener("click", coachSlotsBack);
   document.getElementById("favoriteSystemBtn").addEventListener("click", openSystemList);
   document.getElementById("systemListBackBtn").addEventListener("click", systemListBack);
-  document.getElementById("managementBtn").addEventListener("click", openManagementList);
-  document.getElementById("managementListBackBtn").addEventListener("click", managementListBack);
-  document.getElementById("reputationBtn").addEventListener("click", openReputationList);
-  document.getElementById("reputationListBackBtn").addEventListener("click", reputationListBack);
   document.getElementById("upgradeStaffBtn").addEventListener("click", showStaffUnlock);
   document.getElementById("staffUnlockBackBtn").addEventListener("click", backToFrontOffice);
   document.getElementById("upgradeRosterBtn").addEventListener("click", showRosterUnlock);
