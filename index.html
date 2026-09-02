@@ -1183,7 +1183,7 @@
       flavor:"Run fake into an explosive shot play, pairing a post and a deep cross.",
       cost:7, tier:"purple" },
     { id:"pa_flood", name:"Play-Action Flood", initials:"PF", type:"pass", family:"playaction", avgYards:10, variance:7, completion:0.72, depthTier:"medium",
-      tags:["Explosive","Risky"],
+      tags:["Explosive","Reliable"],
       flavor:"Play-action bootleg, flood route package to the perimeter.",
       cost:4, tier:"blue" },
     { id:"rpo_iz_slant", name:"Inside Zone / Glance", initials:"Z/G", type:"run", family:"rpo", avgYards:5, variance:1.5, minYards:-2, fumbleMod:0.8, runDir:"interior",
@@ -1244,6 +1244,15 @@
       },
       flavor:"Double post shot down the middle, brutal against a single-high shell.",
       cost:7, tier:"purple" },
+    { id:"mesh_rail", name:"Mesh Rail", type:"pass", family:"pass", sackMod:1.0, intMod:0.8,
+      tags:["Blitz-Beater"],
+      branch: (id, cov) => {
+        if (cov.family === "man" && cov.isBlitz) return { avgYards:8, variance:8, completion:0.80, depthTier:"medium" };
+        if (cov.family === "man") return { avgYards:4, variance:1.5, completion:0.88, depthTier:"short" };
+        return { avgYards:7, variance:4, completion:0.82, depthTier:"medium", intMultiplier:1.4 };
+      },
+      flavor:"Shallow mesh underneath with a rail breaking outside -- a safe curl against off man, an explosive shot when the defense brings pressure.",
+      cost:4, tier:"blue" },
   ];
   function availableCards() {
     return [...DECK, ...UNLOCKABLE_CARDS.filter(c => meta.unlockedCards[c.id])];
