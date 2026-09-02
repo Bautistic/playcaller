@@ -1182,6 +1182,10 @@
       tags:["Explosive","Risky"],
       flavor:"Run fake into an explosive shot play, pairing a post and a deep cross.",
       cost:7, tier:"purple" },
+    { id:"pa_flood", name:"Play-Action Flood", initials:"PF", type:"pass", family:"playaction", avgYards:10, variance:7, completion:0.72, depthTier:"medium",
+      tags:["Explosive","Risky"],
+      flavor:"Play-action bootleg, flood route package to the perimeter.",
+      cost:4, tier:"blue" },
     { id:"rpo_iz_slant", name:"Inside Zone / Glance", initials:"Z/G", type:"run", family:"rpo", avgYards:5, variance:1.5, minYards:-2, fumbleMod:0.8, runDir:"interior",
       tags:["Safe","Reliable"],
       flavor:"A run-pass option that reads a linebacker's depth — the glance route blends a heavy slant with a skinny post.",
@@ -1671,7 +1675,6 @@
     // top of the 12-card Playbook (don't take a deck slot, don't require
     // roster.deckIds), independent of any permanent XP unlock.
     const seasonalExtras = [];
-    if (season.upgrades.clinic) seasonalExtras.push(PA_FLOOD_CARD);
     if (season.upgrades.trickPlayDoublePass) seasonalExtras.push(TRICK_PLAY_DOUBLE_PASS_CARD);
     if (season.upgrades.trickPlayHookLadder) seasonalExtras.push(TRICK_PLAY_HOOK_LADDER_CARD);
     // Single-card Installs (Install Trap, Install Draw, etc.) -- each a
@@ -3336,19 +3339,12 @@
     return cards;
   }
 
-  // Reward for the Clinic training action — not in the base DECK, only
-  // added to the shuffled source in drawFreshHand() once unlocked.
-  const PA_FLOOD_CARD = {
-    id: "pa_flood", name: "Play-Action Flood", type: "pass", family: "playaction",
-    avgYards: 10, variance: 7, completion: 0.72, depthTier: "medium",
-    tags: ["Explosive", "Risky"],
-    flavor: "Play-action bootleg, flood route package to the perimeter.",
-  };
-
-  // Rewards for the two Trick Play training actions -- same "not in
-  // UNLOCKABLE_CARDS, only granted via a season.upgrades flag" pattern as
-  // PA_FLOOD_CARD, except both flags are single-match consumables (reset
-  // in continueToTraining()), not season-long. Both quickGame:true -- the
+  // Rewards for the two Trick Play training actions -- "not in
+  // UNLOCKABLE_CARDS, only granted via a season.upgrades flag" pattern
+  // (Play-Action Flood used to work this way too before it moved into
+  // UNLOCKABLE_CARDS/the generic Install `card` mechanism), except both
+  // flags are single-match consumables (reset in continueToTraining()),
+  // not season-long. Both quickGame:true -- the
   // ball is out fast in both, so the risk lives in completion/INT/variance,
   // not in a normal sack-developing dropback.
   const TRICK_PLAY_DOUBLE_PASS_CARD = {
@@ -3376,7 +3372,7 @@
     { id: "filmStudyII", name: "Film Study Lvl 2", category: "Scouting", tier: "blue", cost: 2, postseasonOnly: true,
       desc: "Reveals a 3rd defensive tendency for the rest of the season." },
     { id: "clinic", name: "Install Play-Action Flood", category: "Installs", tier: "blue", cost: 2,
-      desc: "Add Play-Action Flood to your deck for the rest of the season." },
+      card: "pa_flood", desc: "Add Play-Action Flood to your deck for the rest of the season." },
     { id: "specialTeam", name: "Special Teams Drill", category: "Drills", tier: "green", cost: 1,
       desc: "+5% success rate on field goals." },
     { id: "redZonePackage", name: "Install Red Zone", category: "Installs", tier: "blue", cost: 2,
