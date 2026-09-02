@@ -1593,7 +1593,17 @@
     zoneMatch_tite: "dale", // Théo Zola
     zoneMatch_under: "delmar", // Ulrich Muller
   };
+  // Regular season guarantees all 3 archetypes across the 3 regular
+  // matches (shuffled once per season, order picked by season.matchIndex)
+  // instead of an independent random draw each match, which could repeat
+  // one archetype and skip another entirely. Playoff/Bowl stay a plain
+  // random draw -- each is a single match, there's no "all of them" to
+  // guarantee.
   function pickDefArchetype() {
+    if (season.phase === "regular") {
+      if (!season.regularArchetypeOrder) season.regularArchetypeOrder = shuffle(DEF_ARCHETYPES_BY_PHASE.regular);
+      return season.regularArchetypeOrder[season.matchIndex];
+    }
     const options = DEF_ARCHETYPES_BY_PHASE[season.phase] || DEF_ARCHETYPES_BY_PHASE.regular;
     return options[Math.floor(Math.random() * options.length)];
   }
@@ -3118,10 +3128,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
