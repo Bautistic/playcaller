@@ -3193,7 +3193,7 @@
     explosiveOffense: { name: "Explosive Offense", desc: "Score 100 points in a single season.", xp: 5, rp: 5 },
     takeawayStreak: { name: "Takeaway Streak", desc: "Force at least one turnover in every match of a season, including the Bowl.", xp: 5, rp: 5 },
     collector: { name: "Collector", desc: "Unlock every red-tier item reward in the Hall of Fame.", xp: 5, rp: 5 },
-    achievementHunter: { name: "Achievement Hunter", desc: "Unlock 20 Hall of Fame achievements.", xp: 5, rp: 5 },
+    achievementHunter: { name: "Achievement Hunter I", desc: "Unlock 25 Hall of Fame achievements.", xp: 5, rp: 5 },
   };
   // Every red-tier item gated behind an achievement (see `itemId` above) is
   // removed from grantSeasonRewards()'s random pool -- built once from the
@@ -3219,7 +3219,7 @@
     // Achievement Hunter: a meta-completionist milestone, so it's checked
     // on every unlock rather than one specific trigger -- counts itself
     // and Collector too, both are still genuine unlocked achievements.
-    if (Object.keys(meta.achievements).length >= 20) unlockAchievement("achievementHunter");
+    if (Object.keys(meta.achievements).length >= 25) unlockAchievement("achievementHunter");
     return true;
   }
   // Looks a recruit id up across all 5 Staff/Key Player pools -- used by
