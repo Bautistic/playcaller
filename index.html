@@ -547,6 +547,7 @@
   }
   .upgrade-option-header .menu-btn-sub { white-space: nowrap; }
   #startSeasonMenuBtn, #startMatchBtn { background: var(--accent); margin-bottom: 8px; }
+  #rosterRoleButtons button { width: 240px; margin-left: auto; margin-right: auto; }
   .roster-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .roster-tile {
     width: 58px;
@@ -867,6 +868,7 @@
 <div class="overlay hidden" id="rosterUnlockOverlay">
   <div class="modal launch-modal">
     <h2>Recruit Key Players</h2>
+    <p class="setup-intro xp-highlight">RP: <strong id="rosterUnlockRpVal">0</strong></p>
     <div id="rosterRoleButtons"></div>
     <button class="menu-btn return-btn" id="rosterUnlockBackBtn" style="margin-top:14px;">Return</button>
   </div>
@@ -4054,6 +4056,7 @@
     showFrontOffice();
   }
   function renderRosterUnlockPage() {
+    document.getElementById("rosterUnlockRpVal").textContent = meta.rp;
     document.getElementById("rosterRoleButtons").innerHTML = ROSTER_ROLES.map(role =>
       `<button class="menu-btn menu-btn-accent" data-role="${role}">${ROLE_LABELS[role] || role}</button>`
     ).join("");
