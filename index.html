@@ -3150,10 +3150,11 @@
   const ACHIEVEMENTS = {
     firstWin: { name: "First Win", desc: "Win your first match.", xp: 1 },
     homecoming: { name: "Homecoming", desc: "Reach the Playoff for the first time.", xp: 1 },
-    perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 3, rp: 3 },
-    bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 4, rp: 4 },
+    perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 2, rp: 2 },
+    bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 2, rp: 2 },
     backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 seasons in a row.", itemId: "fieldgeneral_qb_red" },
-    dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 3 times over your career.", xp: 6, rp: 6 },
+    threePeat: { name: "Three-Peat", desc: "Win the FRA Bowl 3 seasons in a row.", xp: 5, rp: 5 },
+    dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 5 times over your career.", xp: 5, rp: 5 },
     groundAndPound: { name: "Ground and Pound", desc: "Win a Playoff match calling only Run plays.", itemId: "cg_ol" },
     airRaid: { name: "Air Raid Guru", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
     shutout: { name: "Shutout", desc: "Win the FRA Bowl without conceding a single point.", itemId: "ss_db" },
@@ -3161,7 +3162,7 @@
     brickWall: { name: "Brick Wall", desc: "Win a Playoff match holding the opponent under 60 total yards.", itemId: "nt_dl" },
     takeaway: { name: "Takeaway", desc: "Force 3 opponent turnovers in a match.", itemId: "cb_db_red" },
     workhorse: { name: "Workhorse", desc: "Rush for 300 yards in a single season.", itemId: "eb_rb" },
-    clutch: { name: "Clutch", desc: "Win a match by scoring on the final drive after trailing entering it.", xp: 3, rp: 2 },
+    clutch: { name: "Clutch", desc: "Win a match by scoring on the final drive after trailing entering it.", xp: 2, rp: 2 },
     trickOrTreat: { name: "Trick or Treat", desc: "Land a trick play in a match you win.", xp: 1 },
     ballSecurity: { name: "Ball Security", desc: "Finish a season without throwing an interception or losing a fumble.", xp: 3, rp: 3 },
     draftClass: { name: "Draft Class", desc: "Recruit at least one Staff/Key Player of every tier (green, blue, purple, red) over your career.", xp: 2, rp: 2 },
@@ -4968,7 +4969,7 @@
       if (won) {
         unlockAchievement("bowlChampion");
         meta.lifetimeBowlWins += 1;
-        if (meta.lifetimeBowlWins >= 3) unlockAchievement("dynasty");
+        if (meta.lifetimeBowlWins >= 5) unlockAchievement("dynasty");
       }
     }
 
@@ -4990,6 +4991,7 @@
       // meta.lifetimeBowlWins instead, incremented above independently.
       meta.consecutiveBowlWins = (matchPhase === "bowl" && won) ? meta.consecutiveBowlWins + 1 : 0;
       if (meta.consecutiveBowlWins >= 2) unlockAchievement("backToBack");
+      if (meta.consecutiveBowlWins >= 3) unlockAchievement("threePeat");
       installDiscoveries = grantInstallDiscoveries();
       seasonXpEarned = calculateSeasonXP();
       meta.xp += seasonXpEarned;
