@@ -1954,11 +1954,21 @@
   // to a normal random draw across the whole pool if no card of that family
   // happens to be in it. Headset Comms (Lvl 3) extends the same bias to
   // every down, not just 3rd/4th.
+  // Nerfed 2026-09-23: a guaranteed bias on every single refill (Lvl 3
+  // especially, since it covered every down) removed too much of the
+  // hand-management tension. Now a probability roll instead of a lock --
+  // 3rd/4th down stays strong (70%) at both Lvl 2 and Lvl 3, but Lvl 3's
+  // extension to 1st/2nd down is deliberately weaker (40%) so the "every
+  // down" upgrade isn't a flat strict upgrade in raw power, just in coverage.
+  const STAFF_TRUST_LATE_DOWN_CHANCE = 0.7;
+  const HEADSET_COMMS_EARLY_DOWN_CHANCE = 0.4;
   function biasedPoolDrawIndex() {
     const chemistryLevel = managementLevel("chemistry");
-    // Lvl 2 (Staff Trust) only biases 3rd/4th down; Lvl 3 (Headset Comms)
-    // extends the same bias to every down.
-    const biasActive = chemistryLevel >= 3 || (chemistryLevel >= 2 && (state.down === 3 || state.down === 4));
+    const isLateDown = state.down === 3 || state.down === 4;
+    let biasChance = 0;
+    if (chemistryLevel >= 3) biasChance = isLateDown ? STAFF_TRUST_LATE_DOWN_CHANCE : HEADSET_COMMS_EARLY_DOWN_CHANCE;
+    else if (chemistryLevel >= 2 && isLateDown) biasChance = STAFF_TRUST_LATE_DOWN_CHANCE;
+    const biasActive = biasChance > 0 && Math.random() < biasChance;
     if (biasActive) {
       let family = null;
       if (state.distanceToGo <= 4) family = "run";
@@ -2332,8 +2342,8 @@
       flavor: "A program built on trust: players who buy into the playbook, a staff that reads the room, and a headset that never goes quiet.",
       perk: [
         { name: "Team Trust", lines: ["+3 Playbook slots"] },
-        { name: "Staff Trust", lines: ["On 3rd/4th down, the next drawn card favors run (≤4 yds to go) or pass (≥5 yds to go) when one is available"] },
-        { name: "Headset Comms", lines: ["Staff Trust's run/pass bias applies on every down, not just 3rd/4th"] },
+        { name: "Staff Trust", lines: ["On 3rd/4th down, 70% chance the next drawn card favors run (≤4 yds to go) or pass (≥5 yds to go) when one is available"] },
+        { name: "Headset Comms", lines: ["Also applies on 1st/2nd down, at a reduced 40% chance"] },
       ],
       costs: [5, 10, 20] },
   ];
