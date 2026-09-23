@@ -1039,9 +1039,9 @@
   // offense up (fewer opponent turnovers, better completion/yards) by a
   // single multiplier per phase -- read wherever RISK_BASE/OPP_RISK are used.
   function phaseDifficulty() {
-    if (season.phase === "bowl") return { playerRiskMult: 1.3, oppRiskMult: 0.7, oppCompletionBonus: 0.05, oppYardsBonus: 2 };
-    if (season.phase === "playoff") return { playerRiskMult: 1.15, oppRiskMult: 0.85, oppCompletionBonus: 0.03, oppYardsBonus: 1 };
-    return { playerRiskMult: 1, oppRiskMult: 1, oppCompletionBonus: 0, oppYardsBonus: 0 };
+    if (season.phase === "bowl") return { playerRiskMult: 1.45, oppRiskMult: 0.6, oppCompletionBonus: 0.1, oppYardsBonus: 3.5 };
+    if (season.phase === "playoff") return { playerRiskMult: 1.25, oppRiskMult: 0.75, oppCompletionBonus: 0.06, oppYardsBonus: 2 };
+    return { playerRiskMult: 1.1, oppRiskMult: 0.9, oppCompletionBonus: 0.02, oppYardsBonus: 0.5 };
   }
 
   const DECK = [
@@ -2966,10 +2966,16 @@
     const qbSquare = qb
       ? `<div class="staff-square filled" style="${tierStyle(qb.tier)}" title="${qb.name} — QB">${qb.initials}</div>`
       : `<div class="staff-square locked" title="QB — Locked">?</div>`;
-    const bigSquare = `<div class="staff-square locked" title="Big — Locked">?</div>`;
-    const skillSquares = Array.from({ length: 2 }, () =>
-      `<div class="staff-square locked" title="Skill — Locked">?</div>`
-    ).join("");
+    const big = LINEMEN.find(l => l.id === roster.bigIds[0]);
+    const bigSquare = big
+      ? `<div class="staff-square filled" style="${tierStyle(big.tier)}" title="${big.name} — Big">${big.initials}</div>`
+      : `<div class="staff-square locked" title="Big — Locked">?</div>`;
+    const skillSquares = Array.from({ length: 2 }, (_, i) => {
+      const s = SKILL_PLAYERS.find(x => x.id === roster.skillIds[i]);
+      return s
+        ? `<div class="staff-square filled" style="${tierStyle(s.tier)}" title="${s.name} — Skill">${s.initials}</div>`
+        : `<div class="staff-square locked" title="Skill — Locked">?</div>`;
+    }).join("");
     return qbSquare + bigSquare + skillSquares;
   }
 
