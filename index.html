@@ -3222,8 +3222,8 @@
     homecoming: { name: "Homecoming", desc: "Reach the Playoff for the first time.", xp: 1 },
     perfectSeason: { name: "Perfect Season", desc: "Finish a regular season undefeated.", xp: 2, rp: 2 },
     bowlChampion: { name: "Bowl Champion", desc: "Win the FRA Bowl.", xp: 2, rp: 2 },
-    backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 seasons in a row.", itemId: "fieldgeneral_qb_red" },
-    threePeat: { name: "Three-Peat", desc: "Win the FRA Bowl 3 seasons in a row.", xp: 5, rp: 5 },
+    backToBack: { name: "Back-to-Back", desc: "Win the FRA Bowl in 2 seasons in a row.", xp: 5, rp: 5 },
+    threePeat: { name: "Three-Peat", desc: "Win the FRA Bowl 3 seasons in a row.", itemId: "fieldgeneral_qb_red" },
     dynasty: { name: "Dynasty", desc: "Win the FRA Bowl 5 times over your career.", xp: 5, rp: 5 },
     groundAndPound: { name: "Ground and Pound", desc: "Win a Playoff match calling only Run plays.", itemId: "cg_ol" },
     airRaid: { name: "Air Raid Guru", desc: "Win a Playoff match without calling a single Run.", itemId: "sy_wr" },
@@ -3317,6 +3317,12 @@
     const k = 0.1;
     return 1 / cost + season.wins * k * cost;
   }
+  // QBs are structurally the smallest reward category (4 non-achievement-
+  // gated entries vs ~8 Assistants/~6 Linemen/~7 Skills), so left alone
+  // they'd stay the rarest discovery by pool size alone rather than by
+  // design intent. Flat multiplier on top of seasonRewardWeight, no
+  // guaranteed slot -- still fully RNG, just less starved.
+  const QB_REWARD_WEIGHT_BOOST = 2.5;
   function weightedSampleWithoutReplacement(pool, count) {
     const remaining = [...pool];
     const picks = [];
@@ -3350,7 +3356,7 @@
       .map(a => ({ kind: "coach", id: a.id, name: a.name, role: a.category, tier: a.tier, weight: seasonRewardWeight(a.cost) }));
     const playerEntries = QBS
       .filter(q => q.cost && !q.discoveredFromStart && !meta.discoveredStaff[q.id] && !meta.unlockedStaff[q.id])
-      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", tier: q.tier, weight: seasonRewardWeight(q.cost) }));
+      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", tier: q.tier, weight: seasonRewardWeight(q.cost) * QB_REWARD_WEIGHT_BOOST }));
     // Linemen/Skills were missing from this pool entirely until now -- they
     // existed in the game (recruitable via RP, same as Assistants/QBs) but
     // had no discovery path at all, since meta.discoveredStaff is only ever
