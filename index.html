@@ -2964,6 +2964,18 @@
   function keyPlayersFilledCount() {
     return (roster.qbId ? 1 : 0) + roster.bigIds.length + roster.skillIds.length;
   }
+  // 2 Offensive Skills + 2 Defensive Skills (was a single shared 2-slot pool)
+  // -- with 8 seasons of unlocks stacking up, a flat 2 slots left most
+  // discovered Skills permanently benched regardless of side.
+  function skillIsOffense(s) {
+    return ROLE_POSITIONS["Offensive Skills"].includes(s.position);
+  }
+  function selectedSkillCount(offense) {
+    return roster.skillIds.filter(id => {
+      const s = SKILL_PLAYERS.find(x => x.id === id);
+      return s && skillIsOffense(s) === offense;
+    }).length;
+  }
 
   function staffSquaresHtml() {
     const dc = DCS.find(d => d.id === roster.dcId);
@@ -2986,7 +2998,7 @@
     const bigSquare = big
       ? `<div class="staff-square filled" style="${tierStyle(big.tier)}" title="${big.name} — Big">${big.initials}</div>`
       : `<div class="staff-square locked" title="Big — Locked">?</div>`;
-    const skillSquares = Array.from({ length: 2 }, (_, i) => {
+    const skillSquares = Array.from({ length: 4 }, (_, i) => {
       const s = SKILL_PLAYERS.find(x => x.id === roster.skillIds[i]);
       return s
         ? `<div class="staff-square filled" style="${tierStyle(s.tier)}" title="${s.name} — Skill">${s.initials}</div>`
@@ -3001,7 +3013,7 @@
     document.getElementById("staffSquares").innerHTML = staffSquaresHtml();
     document.getElementById("keyPlayersSquares").innerHTML = keyPlayersSquaresHtml();
     document.getElementById("selectDcBtn").textContent = `Select Your Staff ${staffFilledCount()}/4`;
-    document.getElementById("selectKeyPlayersBtn").textContent = `Select Your Key Players ${keyPlayersFilledCount()}/4`;
+    document.getElementById("selectKeyPlayersBtn").textContent = `Select Your Key Players ${keyPlayersFilledCount()}/6`;
   }
 
   function tilesHtml(list, selectedId) {
@@ -3083,10 +3095,18 @@
             const style = active ? ` style="${tierStyle(l.tier)}"` : "";
             return `<div class="roster-tile ${active ? "active" : ""}" data-id="${l.id}"${style}>${l.initials}</div>`;
           }).join("")}</div>`;
-      const recruitedSkills = SKILL_PLAYERS.filter(s => meta.unlockedStaff[s.id]);
-      const skillsSection = recruitedSkills.length === 0
-        ? lockedSlotHtml("No Skill", "Discover an offensive (RB/TE/Slot/WR) or defensive (LB/CB/S) skill player through Season Rewards, then recruit him in the Front Office.")
-        : `<div class="roster-grid" id="skillsTileGrid">${recruitedSkills.map(s => {
+      const recruitedOffSkills = SKILL_PLAYERS.filter(s => meta.unlockedStaff[s.id] && skillIsOffense(s));
+      const recruitedDefSkills = SKILL_PLAYERS.filter(s => meta.unlockedStaff[s.id] && !skillIsOffense(s));
+      const offSkillsSection = recruitedOffSkills.length === 0
+        ? lockedSlotHtml("No Offensive Skill", "Discover an offensive (RB/TE/WR) skill player through Season Rewards, then recruit him in the Front Office.")
+        : `<div class="roster-grid" id="offSkillsTileGrid">${recruitedOffSkills.map(s => {
+            const active = roster.skillIds.includes(s.id);
+            const style = active ? ` style="${tierStyle(s.tier)}"` : "";
+            return `<div class="roster-tile ${active ? "active" : ""}" data-id="${s.id}"${style}>${s.initials}</div>`;
+          }).join("")}</div>`;
+      const defSkillsSection = recruitedDefSkills.length === 0
+        ? lockedSlotHtml("No Defensive Skill", "Discover a defensive (LB/DB) skill player through Season Rewards, then recruit him in the Front Office.")
+        : `<div class="roster-grid" id="defSkillsTileGrid">${recruitedDefSkills.map(s => {
             const active = roster.skillIds.includes(s.id);
             const style = active ? ` style="${tierStyle(s.tier)}"` : "";
             return `<div class="roster-tile ${active ? "active" : ""}" data-id="${s.id}"${style}>${s.initials}</div>`;
@@ -3107,8 +3127,10 @@
         <div class="setup-label">Linemen ${roster.bigIds.length}/1</div>
         ${linemenSection}
         ${linemenPreviewHtml}
-        <div class="setup-label">Skills ${roster.skillIds.length}/2</div>
-        ${skillsSection}
+        <div class="setup-label">Offensive Skills ${selectedSkillCount(true)}/2</div>
+        ${offSkillsSection}
+        <div class="setup-label">Defensive Skills ${selectedSkillCount(false)}/2</div>
+        ${defSkillsSection}
         ${skillsPreviewHtml}
       `;
       attachTileHandlers(document.getElementById("qbTileGrid"), id => { roster.qbId = id; });
@@ -3125,19 +3147,20 @@
           });
         });
       }
-      const skillsGrid = document.getElementById("skillsTileGrid");
-      if (skillsGrid) {
-        skillsGrid.querySelectorAll(".roster-tile").forEach(tile => {
+      [["offSkillsTileGrid", true], ["defSkillsTileGrid", false]].forEach(([gridId, offense]) => {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.querySelectorAll(".roster-tile").forEach(tile => {
           tile.addEventListener("click", () => {
             const id = tile.dataset.id;
             rosterPreview.skills = id;
             const idx = roster.skillIds.indexOf(id);
             if (idx >= 0) roster.skillIds.splice(idx, 1);
-            else if (roster.skillIds.length < 2) roster.skillIds.push(id);
+            else if (selectedSkillCount(offense) < 2) roster.skillIds.push(id);
             renderRosterOverlay();
           });
         });
-      }
+      });
     }
   }
 
