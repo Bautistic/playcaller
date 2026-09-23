@@ -1039,8 +1039,8 @@
   // offense up (fewer opponent turnovers, better completion/yards) by a
   // single multiplier per phase -- read wherever RISK_BASE/OPP_RISK are used.
   function phaseDifficulty() {
-    if (season.phase === "bowl") return { playerRiskMult: 1.45, oppRiskMult: 0.6, oppCompletionBonus: 0.1, oppYardsBonus: 3.5 };
-    if (season.phase === "playoff") return { playerRiskMult: 1.25, oppRiskMult: 0.75, oppCompletionBonus: 0.06, oppYardsBonus: 2 };
+    if (season.phase === "bowl") return { playerRiskMult: 1.5, oppRiskMult: 0.5, oppCompletionBonus: 0.14, oppYardsBonus: 3.5 };
+    if (season.phase === "playoff") return { playerRiskMult: 1.25, oppRiskMult: 0.75, oppCompletionBonus: 0.08, oppYardsBonus: 2 };
     return { playerRiskMult: 1.1, oppRiskMult: 0.9, oppCompletionBonus: 0.02, oppYardsBonus: 0.5 };
   }
 
