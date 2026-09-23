@@ -3173,10 +3173,10 @@
   // winning the playoff) -> "done". playoffWin/bowlWin stay null until that
   // phase is actually played, so calculateSeasonXP() below can tell whether
   // a leg happened at all.
-  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null };
+  let season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null, ppSpentThisSeason: 0 };
 
   function resetSeason() {
-    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null };
+    season = { matchIndex: 0, pp: 0, upgrades: {}, wins: 0, losses: 0, ties: 0, provenInstalls: {}, beatenDcIds: {}, phase: "regular", playoffWin: null, bowlWin: null, rushYardsSeason: 0, turnoversThisSeason: 0, pointsThisSeason: 0, tdsThisSeason: 0, turnoversForcedThisSeason: 0, allWinsClose: true, allMatchesTookTurnover: true, regularArchetypeOrder: null, ppSpentThisSeason: 0 };
   }
 
   // Season-end XP formula (2026-08-26) -- a first pass to implement and
@@ -3245,6 +3245,7 @@
     clutch: { name: "Clutch", desc: "Win a match by scoring on the final drive after trailing entering it.", xp: 2, rp: 2 },
     trickOrTreat: { name: "Trick or Treat", desc: "Land a trick play in a match you win.", xp: 1 },
     ballSecurity: { name: "Ball Security", desc: "Finish a season without throwing an interception or losing a fumble.", xp: 3, rp: 3 },
+    noFrills: { name: "No Frills", desc: "Win the FRA Bowl without spending a single Practice Point all season.", xp: 5, rp: 5 },
     draftClass: { name: "Draft Class", desc: "Recruit at least one Staff/Key Player of every tier (green, blue, purple, red) over your career.", xp: 2, rp: 2 },
     fullRoster: { name: "Full Roster", desc: "Recruit at least one Assistant, Defensive Coordinator, QB, Lineman, and Skill Player.", rp: 3 },
     maxedOut: { name: "Maxed Out", desc: "Fully upgrade every HC System, Management, and Reputation track.", rp: 5 },
@@ -3589,6 +3590,7 @@
     const action = TRAINING_ACTIONS.find(a => a.id === id);
     if (!action || season.upgrades[id] || season.pp < action.cost) return;
     season.pp -= action.cost;
+    season.ppSpentThisSeason += action.cost;
     season.upgrades[id] = true;
     // Hall of Fame -- Specialist fires the first time EVERY action of one
     // category has season.upgrades[id] true, which is naturally scoped to
@@ -4871,7 +4873,7 @@
         </div>
       `;
     }).join("");
-    const lockedRow = season.upgrades.filmStudy ? "" : `
+    const lockedRow = (season.upgrades.filmStudy || season.upgrades.filmStudyII) ? "" : `
         <div class="tendency-row tendency-row-locked">
           <span class="tendency-locked-label">Unlock a 3rd tendency via Film Study</span>
         </div>
@@ -5114,6 +5116,7 @@
       isRunOver = true; // the Bowl is always the last leg, win or lose
       if (won) {
         unlockAchievement("bowlChampion");
+        if (season.ppSpentThisSeason === 0) unlockAchievement("noFrills");
         meta.lifetimeBowlWins += 1;
         if (meta.lifetimeBowlWins >= 5) unlockAchievement("dynasty");
       }
