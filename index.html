@@ -1948,22 +1948,21 @@
     return ["", "1st", "2nd", "3rd", "4th"][n] || (n + "th");
   }
 
-  // Staff Trust (Team Chemistry Lvl 2+): on 3rd/4th down, the single-card refill
-  // draw favors run plays at 4 yards or less to go, and pass plays at 5+
-  // yards to go (no neutral zone -- every distance is covered) -- falls back
-  // to a normal random draw across the whole pool if no card of that family
-  // happens to be in it.
+  // Headset Comms (Team Chemistry Lvl 2+): on 3rd/4th down, the single-card
+  // refill draw favors run plays at 4 yards or less to go, and pass plays
+  // at 5+ yards to go (no neutral zone -- every distance is covered) --
+  // falls back to a normal random draw across the whole pool if no card of
+  // that family happens to be in it.
   // Nerfed 2026-09-23: was a guaranteed bias on every single refill, which
   // removed too much of the hand-management tension. Now a 70% roll instead
-  // of a lock. Lvl 3 (was Headset Comms, extending the bias to every down)
-  // was replaced the same day by Depth Chart (+1 Offensive/+1 Defensive
-  // Skill slot, see skillCapacityPerSide()) -- Staff Trust itself caps at
-  // Lvl 2.
-  const STAFF_TRUST_LATE_DOWN_CHANCE = 0.7;
+  // of a lock. Lvl 3 (which used to extend the same bias to every down) was
+  // replaced the same day by Depth Chart (+1 Offensive/+1 Defensive Skill
+  // slot, see skillCapacityPerSide()) -- this bias itself caps at Lvl 2.
+  const HEADSET_COMMS_LATE_DOWN_CHANCE = 0.7;
   function biasedPoolDrawIndex() {
     const chemistryLevel = managementLevel("chemistry");
     const isLateDown = state.down === 3 || state.down === 4;
-    const biasChance = (chemistryLevel >= 2 && isLateDown) ? STAFF_TRUST_LATE_DOWN_CHANCE : 0;
+    const biasChance = (chemistryLevel >= 2 && isLateDown) ? HEADSET_COMMS_LATE_DOWN_CHANCE : 0;
     const biasActive = biasChance > 0 && Math.random() < biasChance;
     if (biasActive) {
       let family = null;
@@ -2338,7 +2337,7 @@
       flavor: "A program built on trust: players who buy into the playbook, a staff that reads the room, and a headset that never goes quiet.",
       perk: [
         { name: "Team Trust", lines: ["+3 Playbook slots"] },
-        { name: "Staff Trust", lines: ["On 3rd/4th down, 70% chance the next drawn card favors run (≤4 yds to go) or pass (≥5 yds to go) when one is available"] },
+        { name: "Headset Comms", lines: ["On 3rd/4th down, 70% chance the next drawn card favors run (≤4 yds to go) or pass (≥5 yds to go) when one is available"] },
         { name: "Depth Chart", lines: ["+1 Offensive Skill slot", "+1 Defensive Skill slot"] },
       ],
       costs: [5, 10, 20] },
