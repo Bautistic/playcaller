@@ -3349,6 +3349,36 @@
     }
     return picks;
   }
+  // Position-scoped tier gating (2026-09-23): within a role/slot group that
+  // still has an undiscovered item, only the lowest tier present in THAT
+  // group enters the pool -- once every green in a group is claimed, blues
+  // in that same group start appearing, then purples once every blue is
+  // claimed. Prevents e.g. pulling a purple QB then a blue QB later (an
+  // objective downgrade for the same 1-QB slot, so the blue is just dead
+  // weight). Groups are scoped to match real roster-slot competition: QB
+  // and Linemen each share a single slot (LINEMEN mixes OL/DL, but only 1
+  // Big can ever be equipped, so they share one ladder); Skills are scoped
+  // by position (2 slots, several roles, so a green RB isn't gated behind
+  // an unrelated purple Linebacker); Assistants are scoped by the coaching
+  // role implied by their id (stripping the _blue/_red suffix the two DB
+  // coaches use), not by the broader Offensive/Defensive category, so a
+  // green WR coach isn't held back by an unrelated purple TE coach. Groups
+  // progress independently -- clearing every green Skill doesn't touch
+  // Assistants' own tier floor.
+  const TIER_ORDER = { green: 0, blue: 1, purple: 2, red: 3 };
+  function assistantRoleGroup(a) {
+    return "assistant:" + a.id.replace(/_(green|blue|purple|red)$/, "");
+  }
+  function applyTierGating(entries) {
+    const minRankByGroup = {};
+    entries.forEach(e => {
+      const rank = TIER_ORDER[e.tier];
+      if (minRankByGroup[e.group] === undefined || rank < minRankByGroup[e.group]) {
+        minRankByGroup[e.group] = rank;
+      }
+    });
+    return entries.filter(e => TIER_ORDER[e.tier] === minRankByGroup[e.group]);
+  }
   // Season Rewards are Coaches/Key Players only -- plays/cards are handled
   // separately by the Install discovery lottery above, not by this system.
   // A season reward only *discovers* a Coach/Player (reveals the mystery
@@ -3364,10 +3394,10 @@
     // target, nothing left to discover about him.
     const staffEntries = ASSISTANTS
       .filter(a => !a.discoveredFromStart && !meta.discoveredStaff[a.id] && !meta.unlockedStaff[a.id])
-      .map(a => ({ kind: "coach", id: a.id, name: a.name, role: a.category, tier: a.tier, weight: seasonRewardWeight(a.cost) }));
+      .map(a => ({ kind: "coach", id: a.id, name: a.name, role: a.category, tier: a.tier, group: assistantRoleGroup(a), weight: seasonRewardWeight(a.cost) }));
     const playerEntries = QBS
       .filter(q => q.cost && !q.discoveredFromStart && !meta.discoveredStaff[q.id] && !meta.unlockedStaff[q.id])
-      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", tier: q.tier, weight: seasonRewardWeight(q.cost) * QB_REWARD_WEIGHT_BOOST }));
+      .map(q => ({ kind: "player", id: q.id, name: q.name, role: "QB", tier: q.tier, group: "qb", weight: seasonRewardWeight(q.cost) * QB_REWARD_WEIGHT_BOOST }));
     // Linemen/Skills were missing from this pool entirely until now -- they
     // existed in the game (recruitable via RP, same as Assistants/QBs) but
     // had no discovery path at all, since meta.discoveredStaff is only ever
@@ -3375,12 +3405,13 @@
     // as Assistants/QBs (no "must beat them" gate like DCs).
     const linemenEntries = LINEMEN
       .filter(l => !l.discoveredFromStart && !meta.discoveredStaff[l.id] && !meta.unlockedStaff[l.id])
-      .map(l => ({ kind: "player", id: l.id, name: l.name, role: l.position, tier: l.tier, weight: seasonRewardWeight(l.cost) }));
+      .map(l => ({ kind: "player", id: l.id, name: l.name, role: l.position, tier: l.tier, group: "linemen", weight: seasonRewardWeight(l.cost) }));
     const skillEntries = SKILL_PLAYERS
       .filter(s => !s.discoveredFromStart && !meta.discoveredStaff[s.id] && !meta.unlockedStaff[s.id])
-      .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, tier: s.tier, weight: seasonRewardWeight(s.cost) }));
-    let pool = [...staffEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
+      .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, tier: s.tier, group: "skill:" + s.position, weight: seasonRewardWeight(s.cost) }));
+    const candidates = [...staffEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
       .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id));
+    let pool = applyTierGating(candidates);
     if (matchPhase === "regular") pool = pool.filter(e => e.tier === "green");
     return pool;
   }
