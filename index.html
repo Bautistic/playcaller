@@ -2487,11 +2487,12 @@
   const DEFAULT_DECK_IDS = ["inside_zone", "outside_zone", "duo", "power", "smoke", "bubble", "slants", "stick", "curl_flat", "smash", "y_cross", "hitch_seam"];
   const roster = { coachId: "john_doe", dcId: "jean", assistantIds: [], qbId: "ath", bigIds: [], skillIds: [], deckIds: [...DEFAULT_DECK_IDS], offenseSystemIds: [], managementIds: [], reputationIds: [] };
   let rosterSelectMode = "coach";
-  // Last-clicked Lineman/Skill tile on the Key Players screen, so a click
-  // always surfaces that recruit's info card (QB/DC already do this via
-  // their single roster.qbId/dcId slot -- Linemen/Skills had no equivalent
-  // and clicking one silently toggled selection with zero info shown).
-  let keyPlayerPreview = { linemen: null, skills: null };
+  // Last-clicked Assistant/Lineman/Skill tile on the Staff/Key Players
+  // screens, so a click always surfaces that recruit's info card (DC/QB
+  // already do this via their single roster.dcId/qbId slot -- the
+  // multi-select categories had no equivalent and clicking one silently
+  // toggled selection with zero info shown).
+  let rosterPreview = { assistant: null, linemen: null, skills: null };
 
   // Meta-progression currencies. `xp` funds every HC upgrade -- Systems,
   // Management (incl. Team Chemistry), and Reputation (Network/Scouting)
@@ -3035,12 +3036,17 @@
             const style = active ? ` style="${tierStyle(a.tier)}"` : "";
             return `<div class="roster-tile ${active ? "active" : ""}" data-id="${a.id}"${style}>${a.initials}</div>`;
           }).join("")}</div>`;
+      const previewAssistant = ASSISTANTS.find(a => a.id === rosterPreview.assistant);
+      const assistantPreviewHtml = previewAssistant
+        ? `<div class="pick-card selected" style="border-color:${tierHex(previewAssistant.tier)};">${pickCardHtml(previewAssistant)}</div>`
+        : "";
       body.innerHTML = `
         <div class="setup-label">Defensive Coordinator 1/1</div>
         <div class="roster-grid" id="dcTileGrid">${tilesHtml(DCS.filter(d => !d.cost || meta.unlockedStaff[d.id]), roster.dcId)}</div>
         <div class="pick-card selected" style="border-color:${tierHex(selectedDc.tier)};">${pickCardHtml(selectedDc)}</div>
         <div class="setup-label">Assistants ${roster.assistantIds.length}/3</div>
         ${assistantsSection}
+        ${assistantPreviewHtml}
       `;
       attachTileHandlers(document.getElementById("dcTileGrid"), id => { roster.dcId = id; });
       const assistantGrid = document.getElementById("assistantTileGrid");
@@ -3048,6 +3054,7 @@
         assistantGrid.querySelectorAll(".roster-tile").forEach(tile => {
           tile.addEventListener("click", () => {
             const id = tile.dataset.id;
+            rosterPreview.assistant = id;
             const idx = roster.assistantIds.indexOf(id);
             if (idx >= 0) roster.assistantIds.splice(idx, 1);
             else if (roster.assistantIds.length < 3) roster.assistantIds.push(id);
@@ -3074,11 +3081,11 @@
             const style = active ? ` style="${tierStyle(s.tier)}"` : "";
             return `<div class="roster-tile ${active ? "active" : ""}" data-id="${s.id}"${style}>${s.initials}</div>`;
           }).join("")}</div>`;
-      const previewLineman = LINEMEN.find(l => l.id === keyPlayerPreview.linemen);
+      const previewLineman = LINEMEN.find(l => l.id === rosterPreview.linemen);
       const linemenPreviewHtml = previewLineman
         ? `<div class="pick-card selected" style="border-color:${tierHex(previewLineman.tier)};">${pickCardHtml(previewLineman)}</div>`
         : "";
-      const previewSkill = SKILL_PLAYERS.find(s => s.id === keyPlayerPreview.skills);
+      const previewSkill = SKILL_PLAYERS.find(s => s.id === rosterPreview.skills);
       const skillsPreviewHtml = previewSkill
         ? `<div class="pick-card selected" style="border-color:${tierHex(previewSkill.tier)};">${pickCardHtml(previewSkill)}</div>`
         : "";
@@ -3100,7 +3107,7 @@
         linemenGrid.querySelectorAll(".roster-tile").forEach(tile => {
           tile.addEventListener("click", () => {
             const id = tile.dataset.id;
-            keyPlayerPreview.linemen = id;
+            rosterPreview.linemen = id;
             const idx = roster.bigIds.indexOf(id);
             if (idx >= 0) roster.bigIds.splice(idx, 1);
             else if (roster.bigIds.length < 1) roster.bigIds.push(id);
@@ -3113,7 +3120,7 @@
         skillsGrid.querySelectorAll(".roster-tile").forEach(tile => {
           tile.addEventListener("click", () => {
             const id = tile.dataset.id;
-            keyPlayerPreview.skills = id;
+            rosterPreview.skills = id;
             const idx = roster.skillIds.indexOf(id);
             if (idx >= 0) roster.skillIds.splice(idx, 1);
             else if (roster.skillIds.length < 2) roster.skillIds.push(id);
@@ -3126,7 +3133,11 @@
 
   function openRosterSelect(mode) {
     rosterSelectMode = mode;
-    keyPlayerPreview = { linemen: roster.bigIds[0] || null, skills: roster.skillIds[roster.skillIds.length - 1] || null };
+    rosterPreview = {
+      assistant: roster.assistantIds[roster.assistantIds.length - 1] || null,
+      linemen: roster.bigIds[0] || null,
+      skills: roster.skillIds[roster.skillIds.length - 1] || null,
+    };
     renderRosterOverlay();
     document.getElementById("launchOverlay").classList.add("hidden");
     document.getElementById("rosterOverlay").classList.remove("hidden");
