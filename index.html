@@ -1044,6 +1044,57 @@
     return { playerRiskMult: 1.1, oppRiskMult: 0.9, oppCompletionBonus: 0.02, oppYardsBonus: 0.5 };
   }
 
+  // ---------- GER (Gridiron Eastern Rally) -- format prep, 2026-09-24 ----------
+  // Design-only scaffolding for the 2nd league (still "Locked / Not
+  // implemented yet" in the league-select screen -- see the static markup
+  // around "Gridiron Eastern Rally [GER]"). Nothing below is referenced by
+  // any live code path yet: TOTAL_MATCHES, phaseDifficulty(), and the
+  // season phase state machine (resetSeason/showFinalModal's
+  // regular->playoff->bowl->done flow) are all still hardcoded to FRA's
+  // 3/1/1 shape. Wiring this in later means generalizing those to read
+  // from a per-league config instead, plus a 2nd playoff round (today's
+  // state machine only has one "playoff" phase before "bowl").
+  //
+  // Format: 5 regular-season matches / 2 playoff rounds / 1 Bowl (vs FRA's
+  // 3/1/1) -- a positive record over 5 games already implies >=3 wins, so
+  // qualification reuses FRA's plain "positive record" rule as-is, no
+  // separate threshold needed.
+  //
+  // Playoff Round 1 (PO1) difficulty branches off the regular-season
+  // record; PO2 only stays softer for the 5-0 branch (one tier down from
+  // its own PO1), every other branch converges to "very_hard" by PO2; the
+  // Bowl is "very_hard" for every branch, no exceptions -- the reward for
+  // a strong regular season is an easier PATH there, never an easier
+  // final. Tiers are qualitative labels only (medium/hard/very_hard), not
+  // yet mapped to concrete playerRiskMult/oppRiskMult/oppCompletionBonus/
+  // oppYardsBonus numbers like phaseDifficulty() above -- that calibration
+  // still needs to happen once this is actually wired in.
+  const GER_SEASON_FORMAT = {
+    regularMatches: 5,
+    playoffRounds: 2,
+    playoffDifficultyByRecord: {
+      "5-0": { po1: "medium", po2: "hard", bowl: "very_hard" },
+      "4-1": { po1: "hard", po2: "very_hard", bowl: "very_hard" },
+      "3-2": { po1: "very_hard", po2: "very_hard", bowl: "very_hard" },
+    },
+  };
+  // Pending redesigns for 2 of the existing itemId achievements, agreed
+  // 2026-09-24 but NOT applied to the live ACHIEVEMENTS registry below --
+  // both need GER win-state that doesn't exist yet (no season.league, no
+  // GER match/phase tracking), so wiring these now would just make the
+  // achievement permanently unobtainable rather than actually work.
+  // - Three-Peat (itemId: fieldgeneral_qb_red): condition becomes "win the
+  //   FRA Bowl, then win the GER Championship the very next season" -- a
+  //   true same-career succession (not just "both, at some point").
+  //   Replaces the current "3 FRA Bowls in a row".
+  // - Shutout (itemId: ss_db): condition becomes "force 2 opponent
+  //   turnovers in a single GER Playoff match" -- lowered from Takeaway's
+  //   3-turnover bar since GER's hardest oppRiskMult tier makes turnovers
+  //   much rarer than in FRA. Replaces "win the FRA Bowl without
+  //   conceding a point". NOTE: "Shutout" no longer fits a turnover-based
+  //   condition -- renamed "Highway Robbery" (agreed 2026-09-24) when this
+  //   gets wired.
+
   const DECK = [
     // --- Run ---
     { id:"inside_zone", name:"Inside Zone", type:"run", family:"run", avgYards:4, variance:3, minYards:-2, fumbleMod:1.0, runDir:"interior",
@@ -2467,7 +2518,7 @@
     { id: "dl_coach", initials: "DL", name: "Driss Larbi", category: "Defensive Assistants", flavor: "A defensive line coach who lives for the pass rush.", perk: "+0.5% opponent sack chance", effect: { stat: "oppSackChance", amount: 0.005 }, tier: "green", cost: 3 },
     { id: "db_coach_blue", initials: "DB", name: "David Bonnet", category: "Defensive Assistants", flavor: "A secondary coach who drills technique until it's second nature.", perk: "-0.5% opponent completion, +0.25% opponent interception chance", effects: [{ stat: "oppCompletionReduction", amount: 0.005 }, { stat: "oppIntBonus", amount: 0.0025 }], tier: "blue", cost: 6 },
     { id: "lb_coach", initials: "LB", name: "Lucas Bertin", category: "Defensive Assistants", flavor: "A linebackers coach who reads the run before it happens.", perk: "-0.5 yard on opponent run gains, +0.25% opponent fumble chance", effects: [{ stat: "oppRunYardsReduction", amount: 0.5 }, { stat: "oppFumbleBonus", amount: 0.0025 }], tier: "blue", cost: 6 },
-    { id: "db_coach_red", initials: "NB", name: "Nathan Berto", category: "Defensive Assistants", flavor: "An elite secondary coach and former nickel back in Europe, ball-hawking instincts built over a long playing career.", perk: "-1% opponent completion, +0.5% opponent interception chance, +0.5% opponent fumble chance", effects: [{ stat: "oppCompletionReduction", amount: 0.01 }, { stat: "oppIntBonus", amount: 0.005 }, { stat: "oppFumbleBonus", amount: 0.005 }], tier: "red", cost: 12 },
+    { id: "db_coach_red", initials: "NB", name: "Niklas Becker", category: "Defensive Assistants", flavor: "An elite secondary coach and former nickel back in Europe, ball-hawking instincts built over a long playing career.", perk: "-1% opponent completion, +0.5% opponent interception chance, +0.5% opponent fumble chance", effects: [{ stat: "oppCompletionReduction", amount: 0.01 }, { stat: "oppIntBonus", amount: 0.005 }, { stat: "oppFumbleBonus", amount: 0.005 }], tier: "red", cost: 12 },
   ];
 
   // Tier = a color-coded rarity/level readout for Staff and Key Players
@@ -3305,6 +3356,14 @@
   const EXCLUDED_FROM_SEASON_REWARDS = new Set(
     Object.values(ACHIEVEMENTS).map(a => a.itemId).filter(Boolean)
   );
+  // Reserved for GER (2nd league, not implemented yet -- see
+  // GER_SEASON_FORMAT above): items meant to only be discoverable while
+  // playing GER. Since the league itself isn't selectable yet, these stay
+  // excluded from every reward pool unconditionally for now (unobtainable,
+  // same as if GER were live and the player were still on FRA) -- once
+  // league selection is wired, this should instead gate on
+  // `season.league !== "ger"` rather than being an unconditional exclude.
+  const GER_EXCLUSIVE_IDS = new Set(["db_coach_red", "delmar"]);
   // Idempotent -- returns false (no-op) if already unlocked, so every call
   // site can fire its check unconditionally without guarding itself.
   function unlockAchievement(id) {
@@ -3435,7 +3494,7 @@
       .filter(s => !s.discoveredFromStart && !meta.discoveredStaff[s.id] && !meta.unlockedStaff[s.id])
       .map(s => ({ kind: "player", id: s.id, name: s.name, role: s.position, tier: s.tier, group: "skill:" + s.position, weight: seasonRewardWeight(s.cost) }));
     const candidates = [...staffEntries, ...playerEntries, ...linemenEntries, ...skillEntries]
-      .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id));
+      .filter(e => !EXCLUDED_FROM_SEASON_REWARDS.has(e.id) && !GER_EXCLUSIVE_IDS.has(e.id));
     let pool = applyTierGating(candidates);
     if (matchPhase === "regular") pool = pool.filter(e => e.tier === "green");
     return pool;
@@ -3451,7 +3510,7 @@
     // never have a beaten DC (the Playoff was never reached), so this
     // never applies to the 1-green-slot tier in practice.
     const autoDcPicks = DCS
-      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id])
+      .filter(d => d.cost && !d.discoveredFromStart && !meta.discoveredStaff[d.id] && !meta.unlockedStaff[d.id] && season.beatenDcIds[d.id] && !GER_EXCLUSIVE_IDS.has(d.id))
       .map(d => ({ kind: "coach", id: d.id, name: d.name, role: "Defensive Coordinator", tier: d.tier }));
     const slotsLeft = Math.max(0, seasonRewardCount(matchPhase) - autoDcPicks.length);
     const pool = buildSeasonRewardPool(matchPhase);
